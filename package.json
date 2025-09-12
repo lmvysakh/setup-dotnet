@@ -64,6 +64,6 @@
     "testEnvironment": "node"
   },
   "overrides": {
-     "uri-js": "npm:uri-js-replace@^1.0.1"
+      "ajv": "6.3.0"
   }
 }
