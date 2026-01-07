@@ -53,7 +53,9 @@ export async function run() {
         d => d.version && typeof d.version === 'string'
       );
       if (!installDescriptors.length) {
-        core.setFailed("No valid .NET SDK definitions found in 'dotnet' input.");
+        core.setFailed(
+          "No valid .NET SDK definitions found in 'dotnet' input."
+        );
         return;
       }
     }
@@ -84,18 +86,17 @@ export async function run() {
         }
       }
       const quality = core.getInput('dotnet-quality') as QualityOptions;
-      if (
-        quality &&
-        !qualityOptions.includes(quality)
-      ) {
+      if (quality && !qualityOptions.includes(quality)) {
         throw new Error(
           `Value '${quality}' is not supported for the 'dotnet-quality' option. Supported values are: daily, signed, validated, preview, ga.`
         );
       }
-      installDescriptors = Array.from(new Set(versions.filter(Boolean))).map(v => ({
-        version: v,
-        quality
-      }));
+      installDescriptors = Array.from(new Set(versions.filter(Boolean))).map(
+        v => ({
+          version: v,
+          quality
+        })
+      );
     }
 
     // ---------- Installation loop ----------
@@ -131,7 +132,10 @@ export async function run() {
     }
 
     // ---------- Outputs ----------
-    outputInstalledVersion(installedDotnetVersions, core.getInput('global-json-file'));
+    outputInstalledVersion(
+      installedDotnetVersions,
+      core.getInput('global-json-file')
+    );
 
     // ---------- Caching ----------
     if (core.getBooleanInput('cache') && isCacheFeatureAvailable()) {

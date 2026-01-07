@@ -15,14 +15,14 @@ import {QualityOptions} from './setup-dotnet';
 // Returns normalized arch string for installer script expectations
 function getScriptArch(arch?: string): string | undefined {
   if (!arch) return undefined;
-  if (arch === "x64") return "x64";
-  if (arch === "arm64") return IS_WINDOWS ? "arm64" : "arm64";
+  if (arch === 'x64') return 'x64';
+  if (arch === 'arm64') return IS_WINDOWS ? 'arm64' : 'arm64';
   return arch;
 }
 
 // Checks Rosetta installation on macOS (Apple Silicon)
 async function isRosettaInstalled(): Promise<boolean> {
-  if (os.platform() !== "darwin" || os.arch() !== "arm64") return false;
+  if (os.platform() !== 'darwin' || os.arch() !== 'arm64') return false;
   try {
     await exec.exec('pgrep', ['oahd'], {silent: true});
     return true;
@@ -33,13 +33,13 @@ async function isRosettaInstalled(): Promise<boolean> {
 
 // Checks if a given arch is valid for the current runner
 function isSupportedOnRunner(requestedArch: string): boolean {
-  if (os.platform() === "darwin") {
-    if (requestedArch === "arm64" || requestedArch === "x64") return true;
+  if (os.platform() === 'darwin') {
+    if (requestedArch === 'arm64' || requestedArch === 'x64') return true;
     return false;
   }
 
-  if (os.platform() === "win32") {
-    if (requestedArch === "arm64" || requestedArch === "x64") return true;
+  if (os.platform() === 'win32') {
+    if (requestedArch === 'arm64' || requestedArch === 'x64') return true;
     return false;
   }
   // Linux: most CI runners are x64
