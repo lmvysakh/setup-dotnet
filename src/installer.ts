@@ -10,6 +10,44 @@ import semver from 'semver';
 import {IS_WINDOWS, PLATFORM} from './utils';
 import {QualityOptions} from './setup-dotnet';
 
+// --------- START: New utility for arch ----------
+
+// Returns normalized arch string for installer script expectations
+function getScriptArch(arch?: string): string | undefined {
+  if (!arch) return undefined;
+  if (arch === "x64") return "x64";
+  if (arch === "arm64") return IS_WINDOWS ? "arm64" : "arm64";
+  return arch;
+}
+
+// Checks Rosetta installation on macOS (Apple Silicon)
+async function isRosettaInstalled(): Promise<boolean> {
+  if (os.platform() !== "darwin" || os.arch() !== "arm64") return false;
+  try {
+    await exec.exec('pgrep', ['oahd'], {silent: true});
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Checks if a given arch is valid for the current runner
+function isSupportedOnRunner(requestedArch: string): boolean {
+  if (os.platform() === "darwin") {
+    if (requestedArch === "arm64" || requestedArch === "x64") return true;
+    return false;
+  }
+
+  if (os.platform() === "win32") {
+    if (requestedArch === "arm64" || requestedArch === "x64") return true;
+    return false;
+  }
+  // Linux: most CI runners are x64
+  return requestedArch === os.arch();
+}
+
+// --------- END: New utility for arch ----------
+
 export interface DotnetVersion {
   type: string;
   value: string;
@@ -74,7 +112,6 @@ export class DotnetVersionResolver {
     } else if (this.isNumericTag(major)) {
       this.resolvedArgument.value = await this.getLatestByMajorTag(major);
     } else {
-      // If "dotnet-version" is specified as *, x or X resolve latest version of .NET explicitly from LTS channel. The version argument will default to "latest" by install-dotnet script.
       this.resolvedArgument.value = 'LTS';
     }
     this.resolvedArgument.qualityFlag =
@@ -161,7 +198,6 @@ export class DotnetInstallScript {
     if (process.env['https_proxy'] != null) {
       this.scriptArguments.push(`-ProxyAddress ${process.env['https_proxy']}`);
     }
-    // This is not currently an option
     if (process.env['no_proxy'] != null) {
       this.scriptArguments.push(`-ProxyBypassList ${process.env['no_proxy']}`);
     }
@@ -202,6 +238,16 @@ export class DotnetInstallScript {
 
     return this;
   }
+
+  // ----- ADDED: New method to pass arch to installer script -----
+  public useArch(arch?: string) {
+    if (!arch) return this;
+    // Windows arch arg naming is same as non-windows since .NET install scripts support --arch/-Architecture
+    const archArg = IS_WINDOWS ? '-Architecture' : '--architecture';
+    this.useArguments(archArg, getScriptArch(arch)!);
+    return this;
+  }
+  // -------------------------------------------------------------
 
   public async execute() {
     const getExecOutputOptions = {
@@ -255,51 +301,61 @@ export class DotnetCoreInstaller {
     DotnetInstallDir.setEnvironmentVariable();
   }
 
+  // ---- CHANGE: add 'arch' argument (optional, defaults to process.arch) -----
   constructor(
     private version: string,
-    private quality: QualityOptions
+    private quality: QualityOptions,
+    private arch?: string // <-- NEW
   ) {}
 
   public async installDotnet(): Promise<string | null> {
+    // ----- CHECK: Is arch supported? -----
+    const effectiveArch = this.arch || process.arch;
+    if (!isSupportedOnRunner(effectiveArch)) {
+      throw new Error(
+        `The architecture '${effectiveArch}' is not supported on this runner (platform: ${os.platform()}, arch: ${os.arch()})`
+      );
+    }
+
+    // Rosetta Check
+    if (
+      os.platform() === 'darwin' &&
+      os.arch() === 'arm64' &&
+      effectiveArch === 'x64'
+    ) {
+      if (!(await isRosettaInstalled())) {
+        throw new Error(
+          `Rosetta 2 is required to install the x64 .NET SDK on Apple Silicon. Please run: sudo softwareupdate --install-rosetta --agree-to-license`
+        );
+      }
+    }
+
     const versionResolver = new DotnetVersionResolver(this.version);
     const dotnetVersion = await versionResolver.createDotnetVersion();
 
-    /**
-     * Install dotnet runitme first in order to get
-     * the latest stable version of dotnet CLI
-     */
+    // ---- Install runtime+CLI (just as before, arch will be passed below) ----
     const runtimeInstallOutput = await new DotnetInstallScript()
-      // If dotnet CLI is already installed - avoid overwriting it
       .useArguments(
         IS_WINDOWS ? '-SkipNonVersionedFiles' : '--skip-non-versioned-files'
       )
-      // Install only runtime + CLI
       .useArguments(IS_WINDOWS ? '-Runtime' : '--runtime', 'dotnet')
-      // Use latest stable version
       .useArguments(IS_WINDOWS ? '-Channel' : '--channel', 'LTS')
+      .useArch(effectiveArch) // <-- pass arch arg!
       .execute();
 
     if (runtimeInstallOutput.exitCode) {
-      /**
-       * dotnetInstallScript will install CLI and runtime even if previous script haven't succeded,
-       * so at this point it's too early to throw an error
-       */
       core.warning(
         `Failed to install dotnet runtime + cli, exit code: ${runtimeInstallOutput.exitCode}. ${runtimeInstallOutput.stderr}`
       );
     }
 
-    /**
-     * Install dotnet over the latest version of
-     * dotnet CLI
-     */
+    // ---- Install SDK (with correct arch) -----
     const dotnetInstallOutput = await new DotnetInstallScript()
-      // Don't overwrite CLI because it should be already installed
       .useArguments(
         IS_WINDOWS ? '-SkipNonVersionedFiles' : '--skip-non-versioned-files'
       )
-      // Use version provided by user
       .useVersion(dotnetVersion, this.quality)
+      .useArch(effectiveArch) // <-- pass arch arg!
       .execute();
 
     if (dotnetInstallOutput.exitCode) {
@@ -307,6 +363,15 @@ export class DotnetCoreInstaller {
         `Failed to install dotnet, exit code: ${dotnetInstallOutput.exitCode}. ${dotnetInstallOutput.stderr}`
       );
     }
+
+    // ---- EXPORT unique environment variable (for user convenience) ----
+    if (effectiveArch === 'arm64') {
+      core.exportVariable('DOTNET_ROOT_ARM64', DotnetInstallDir.dirPath);
+    } else if (effectiveArch === 'x64') {
+      core.exportVariable('DOTNET_ROOT_X64', DotnetInstallDir.dirPath);
+    }
+    // Users/scripts can use DOTNET_ROOT_X64, DOTNET_ROOT_ARM64,
+    // or default DOTNET_ROOT (last arch installed)
 
     return this.parseInstalledVersion(dotnetInstallOutput.stdout);
   }

@@ -49,6 +49,41 @@ steps:
       9.0.x
 - run: dotnet build <my project>
 ```
+## 🆕 Multi-Architecture .NET SDK Installation
+
+**With the new `dotnet` input, you can request specific architectures for each SDK installation.
+This is highly recommended for Apple Silicon (macOS arm64) and Windows 11 ARM, so you can test arm64 and x64 side-by-side on a single runner.**
+
+```yaml
+steps:
+- uses: actions/checkout@v5
+- name: Setup both x64 and arm64 .NET SDKs
+  uses: actions/setup-dotnet@main
+  with:
+    dotnet: |
+      - version: 8.0.x
+        arch: x64
+      - version: 8.0.x
+        arch: arm64
+- name: Use native dotnet (PATH, typically arm64)
+  run: dotnet --info
+- name: Use arm64 .NET SDK directly
+  run: $DOTNET_ROOT_ARM64/dotnet --info
+- name: Use x64 .NET SDK directly
+  run: $DOTNET_ROOT_X64/dotnet --info
+```
+
+- Use the appropriate binary in later steps by referencing the environment var:
+  - `$DOTNET_ROOT_X64/dotnet` for x64
+  - `$DOTNET_ROOT_ARM64/dotnet` for arm64
+
+**Notes:**
+- On macOS-ARM runners, installing `x64` SDKs requires Rosetta 2. The action checks for this and provides a helpful error if missing.
+- On classic x64 or arm64 runners (e.g., Windows or Linux), only the native architecture SDK is installed; requesting both will install just the compatible ones.
+- If only one sdk/arch is compatible, that's the only one installed.
+
+**Legacy/standard syntax (`dotnet-version`) and `global-json-file` remain fully supported.**
+
 ## Supported version syntax
 
 The `dotnet-version` input supports following syntax:
