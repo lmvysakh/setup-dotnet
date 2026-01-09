@@ -50,9 +50,11 @@ describe('installer tests', () => {
           });
         });
 
+        // UPDATED: Always supply architecture argument now
         const dotnetInstaller = new installer.DotnetCoreInstaller(
           inputVersion,
-          inputQuality
+          inputQuality,
+          'x64'
         );
         await expect(dotnetInstaller.installDotnet()).rejects.toThrow(
           `Failed to install dotnet, exit code: 1. ${errorMessage}`
@@ -72,9 +74,11 @@ describe('installer tests', () => {
         });
         maxSatisfyingSpy.mockImplementation(() => inputVersion);
 
+        // UPDATED: Always supply architecture argument now
         const dotnetInstaller = new installer.DotnetCoreInstaller(
           inputVersion,
-          inputQuality
+          inputQuality,
+          'x64'
         );
         const installedVersion = await dotnetInstaller.installDotnet();
 
@@ -95,9 +99,11 @@ describe('installer tests', () => {
         });
         maxSatisfyingSpy.mockImplementation(() => inputVersion);
 
+        // UPDATED: Always supply architecture argument now
         const dotnetInstaller = new installer.DotnetCoreInstaller(
           inputVersion,
-          inputQuality
+          inputQuality,
+          'x64'
         );
 
         await dotnetInstaller.installDotnet();
@@ -132,9 +138,11 @@ describe('installer tests', () => {
         });
         maxSatisfyingSpy.mockImplementation(() => inputVersion);
 
+        // UPDATED: Always supply architecture argument now
         const dotnetInstaller = new installer.DotnetCoreInstaller(
           inputVersion,
-          inputQuality
+          inputQuality,
+          'x64'
         );
 
         await dotnetInstaller.installDotnet();
@@ -158,9 +166,11 @@ describe('installer tests', () => {
         });
         maxSatisfyingSpy.mockImplementation(() => inputVersion);
 
+        // UPDATED: Always supply architecture argument now
         const dotnetInstaller = new installer.DotnetCoreInstaller(
           inputVersion,
-          inputQuality
+          inputQuality,
+          'x64'
         );
 
         await dotnetInstaller.installDotnet();
@@ -185,9 +195,11 @@ describe('installer tests', () => {
           });
           maxSatisfyingSpy.mockImplementation(() => inputVersion);
 
+          // UPDATED: Always supply architecture argument now
           const dotnetInstaller = new installer.DotnetCoreInstaller(
             inputVersion,
-            inputQuality
+            inputQuality,
+            'x64'
           );
 
           await dotnetInstaller.installDotnet();
@@ -225,9 +237,11 @@ describe('installer tests', () => {
           });
           maxSatisfyingSpy.mockImplementation(() => inputVersion);
 
+          // UPDATED: Always supply architecture argument now
           const dotnetInstaller = new installer.DotnetCoreInstaller(
             inputVersion,
-            inputQuality
+            inputQuality,
+            'x64'
           );
 
           await dotnetInstaller.installDotnet();
@@ -266,9 +280,11 @@ describe('installer tests', () => {
           });
           maxSatisfyingSpy.mockImplementation(() => inputVersion);
 
+          // UPDATED: Always supply architecture argument now
           const dotnetInstaller = new installer.DotnetCoreInstaller(
             inputVersion,
-            inputQuality
+            inputQuality,
+            'x64'
           );
 
           await dotnetInstaller.installDotnet();
@@ -304,9 +320,11 @@ describe('installer tests', () => {
           });
           maxSatisfyingSpy.mockImplementation(() => inputVersion);
 
+          // UPDATED: Always supply architecture argument now
           const dotnetInstaller = new installer.DotnetCoreInstaller(
             inputVersion,
-            inputQuality
+            inputQuality,
+            'x64'
           );
 
           await dotnetInstaller.installDotnet();
@@ -327,6 +345,89 @@ describe('installer tests', () => {
           );
         });
       }
+
+      // NEW TESTS: EXPLICITLY CHECK ARCHITECTURE ARGUMENT
+      it(`should supply 'architecture' argument to the installation script when provided`, async () => {
+        const inputVersion = '7.0.300';
+        const inputQuality = '' as QualityOptions;
+        const inputArch = 'arm64';
+        const stdout = `Fictitious dotnet version ${inputVersion} is installed`;
+
+        getExecOutputSpy.mockImplementation(() => {
+          return Promise.resolve({
+            exitCode: 0,
+            stdout: `${stdout}`,
+            stderr: ''
+          });
+        });
+        maxSatisfyingSpy.mockImplementation(() => inputVersion);
+
+        const dotnetInstaller = new installer.DotnetCoreInstaller(
+          inputVersion,
+          inputQuality,
+          inputArch
+        );
+
+        await dotnetInstaller.installDotnet();
+
+        /**
+         * Check the script args from both runtime and SDK installations
+         * (e.g. 0 = runtime install, 1 = SDK install)
+         */
+        const runtimeArgs = (
+          getExecOutputSpy.mock.calls[0][1] as string[]
+        ).join(' ');
+        const sdkArgs = (getExecOutputSpy.mock.calls[1][1] as string[]).join(
+          ' '
+        );
+
+        const expectedArg = IS_WINDOWS
+          ? `-Architecture ${inputArch}`
+          : `--architecture ${inputArch}`;
+
+        expect(runtimeArgs).toContain(expectedArg);
+        expect(sdkArgs).toContain(expectedArg);
+      });
+
+      it(`should not supply 'architecture' argument if value is default ('x64')`, async () => {
+        const inputVersion = '7.0.300';
+        const inputQuality = '' as QualityOptions;
+        const inputArch = 'x64';
+        const stdout = `Fictitious dotnet version ${inputVersion} is installed`;
+
+        getExecOutputSpy.mockImplementation(() => {
+          return Promise.resolve({
+            exitCode: 0,
+            stdout: `${stdout}`,
+            stderr: ''
+          });
+        });
+        maxSatisfyingSpy.mockImplementation(() => inputVersion);
+
+        const dotnetInstaller = new installer.DotnetCoreInstaller(
+          inputVersion,
+          inputQuality,
+          inputArch
+        );
+
+        await dotnetInstaller.installDotnet();
+
+        const runtimeArgs = (
+          getExecOutputSpy.mock.calls[0][1] as string[]
+        ).join(' ');
+        const sdkArgs = (getExecOutputSpy.mock.calls[1][1] as string[]).join(
+          ' '
+        );
+
+        // Should not contain architecture argument when x64 is used (it's the default)
+        expect(runtimeArgs).not.toContain('--architecture x64');
+        expect(runtimeArgs).not.toContain('-Architecture x64');
+        expect(sdkArgs).not.toContain('--architecture x64');
+        expect(sdkArgs).not.toContain('-Architecture x64');
+        // Should also not contain arm64 arguments
+        expect(runtimeArgs).not.toContain('--architecture arm64');
+        expect(sdkArgs).not.toContain('--architecture arm64');
+      });
     });
 
     describe('addToPath() tests', () => {

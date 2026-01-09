@@ -94,6 +94,7 @@ describe('setup-dotnet tests', () => {
       inputs['global-json-file'] = '';
       inputs['dotnet-version'] = ['6.0', '7.0'];
       inputs['dotnet-quality'] = '';
+      inputs['architecture'] = 'arm64';
 
       installDotnetSpy.mockImplementation(() => Promise.resolve(''));
 
@@ -105,6 +106,7 @@ describe('setup-dotnet tests', () => {
       inputs['global-json-file'] = '';
       inputs['dotnet-version'] = ['6.0', '7.0'];
       inputs['dotnet-quality'] = '';
+      inputs['architecture'] = 'x64';
 
       installDotnetSpy.mockImplementation(() => Promise.resolve(''));
 
@@ -146,6 +148,7 @@ describe('setup-dotnet tests', () => {
 
     it('should call setOutput() after installation complete successfully', async () => {
       inputs['dotnet-version'] = ['6.0.300'];
+      inputs['architecture'] = 'x64';
 
       installDotnetSpy.mockImplementation(() =>
         Promise.resolve(`${inputs['dotnet-version']}`)
@@ -158,6 +161,7 @@ describe('setup-dotnet tests', () => {
     it(`shouldn't call setOutput() if parsing dotnet-installer logs failed`, async () => {
       inputs['dotnet-version'] = ['6.0.300'];
       const warningMessage = `Failed to output the installed version of .NET. The 'dotnet-version' output will not be set.`;
+      inputs['architecture'] = 'x64';
 
       installDotnetSpy.mockImplementation(() => Promise.resolve(null));
 
@@ -169,6 +173,7 @@ describe('setup-dotnet tests', () => {
     it(`shouldn't call setOutput() if actions didn't install .NET`, async () => {
       inputs['dotnet-version'] = [];
       const warningMessage = `The 'dotnet-version' output will not be set.`;
+      inputs['architecture'] = 'x64';
 
       await setup.run();
 
@@ -181,6 +186,7 @@ describe('setup-dotnet tests', () => {
       inputs['dotnet-quality'] = '';
       inputs['cache'] = true;
       inputs['cache-dependency-path'] = 'fictitious.package.lock.json';
+      inputs['architecture'] = 'arm64';
 
       installDotnetSpy.mockImplementation(() => Promise.resolve(''));
 
@@ -198,6 +204,7 @@ describe('setup-dotnet tests', () => {
       inputs['dotnet-version'] = ['6.0.300'];
       inputs['dotnet-quality'] = '';
       inputs['cache'] = false;
+      inputs['architecture'] = 'x64';
 
       installDotnetSpy.mockImplementation(() => Promise.resolve(''));
 
@@ -212,6 +219,7 @@ describe('setup-dotnet tests', () => {
       inputs['dotnet-version'] = ['6.0.300'];
       inputs['dotnet-quality'] = '';
       inputs['cache'] = true;
+      inputs['architecture'] = 'x64';
 
       installDotnetSpy.mockImplementation(() => Promise.resolve(''));
 

@@ -100634,6 +100634,16 @@ class DotnetInstallScript {
         }
         return this;
     }
+    // NEW: Add method to include architecture
+    useArchitecture(architecture) {
+        if (!architecture || architecture === 'x64') {
+            // x64 is default, may be omitted, but you can force passing it
+            return this;
+        }
+        // The install-dotnet.ps1 and install-dotnet.sh use --architecture/-Architecture
+        this.useArguments(utils_1.IS_WINDOWS ? '-Architecture' : '--architecture', architecture);
+        return this;
+    }
     async execute() {
         const getExecOutputOptions = {
             ignoreReturnCode: true,
@@ -100669,15 +100679,20 @@ class DotnetInstallDir {
     }
 }
 exports.DotnetInstallDir = DotnetInstallDir;
+// UPDATED: Accept architecture in the constructor and propagate
 class DotnetCoreInstaller {
     version;
     quality;
+    architecture;
     static {
         DotnetInstallDir.setEnvironmentVariable();
     }
-    constructor(version, quality) {
+    // Add architecture parameter and store it
+    constructor(version, quality, architecture // NEW!
+    ) {
         this.version = version;
         this.quality = quality;
+        this.architecture = architecture;
     }
     async installDotnet() {
         const versionResolver = new DotnetVersionResolver(this.version);
@@ -100693,6 +100708,8 @@ class DotnetCoreInstaller {
             .useArguments(utils_1.IS_WINDOWS ? '-Runtime' : '--runtime', 'dotnet')
             // Use latest stable version
             .useArguments(utils_1.IS_WINDOWS ? '-Channel' : '--channel', 'LTS')
+            // ARCHITECTURE; pass along architecture for runtime (optional, but consistent)
+            .useArchitecture(this.architecture)
             .execute();
         if (runtimeInstallOutput.exitCode) {
             /**
@@ -100710,6 +100727,8 @@ class DotnetCoreInstaller {
             .useArguments(utils_1.IS_WINDOWS ? '-SkipNonVersionedFiles' : '--skip-non-versioned-files')
             // Use version provided by user
             .useVersion(dotnetVersion, this.quality)
+            // ARCHITECTURE; pass along architecture for version
+            .useArchitecture(this.architecture)
             .execute();
         if (dotnetInstallOutput.exitCode) {
             throw new Error(`Failed to install dotnet, exit code: ${dotnetInstallOutput.exitCode}. ${dotnetInstallOutput.stderr}`);
@@ -100828,10 +100847,13 @@ async function run() {
             if (quality && !qualityOptions.includes(quality)) {
                 throw new Error(`Value '${quality}' is not supported for the 'dotnet-quality' option. Supported values are: daily, signed, validated, preview, ga.`);
             }
+            // NEW: Read architecture input, default to 'x64'
+            const architecture = core.getInput('architecture') || 'x64';
             let dotnetInstaller;
             const uniqueVersions = new Set(versions);
             for (const version of uniqueVersions) {
-                dotnetInstaller = new installer_1.DotnetCoreInstaller(version, quality);
+                // UPDATED: Pass architecture as the third argument
+                dotnetInstaller = new installer_1.DotnetCoreInstaller(version, quality, architecture);
                 const installedVersion = await dotnetInstaller.installDotnet();
                 installedDotnetVersions.push(installedVersion);
             }

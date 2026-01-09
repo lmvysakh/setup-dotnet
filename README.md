@@ -49,6 +49,26 @@ steps:
       9.0.x
 - run: dotnet build <my project>
 ```
+
+## Architecture selection
+
+The `architecture` input allows you to specify the target architecture to install (such as `x64`, `x86`, or `arm64`). If not supplied, the default is `x64`.
+This is useful for cross-compiling, running on arm-based or legacy runners, or when you require a .NET SDK/runtime for a specific architecture.
+
+```yaml
+steps:
+- uses: actions/checkout@v5
+- uses: actions/setup-dotnet@v5
+  with:
+    dotnet-version: '8.0.x'
+    architecture: arm64
+- run: dotnet --info
+```
+
+**Supported values:** `x64`, `x86`, `arm64`.
+
+> **Note:** The installed .NET architecture must be compatible with your runner's processor and OS. Not all versions of the .NET SDK/runtime are available for every architecture.
+
 ## Supported version syntax
 
 The `dotnet-version` input supports following syntax:
