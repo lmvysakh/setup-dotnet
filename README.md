@@ -53,7 +53,7 @@ steps:
 ## Architecture selection
 
 The `architecture` input allows you to specify the target architecture to install (such as `x64`, `x86`, or `arm64`). If not supplied, the default is `x64`.
-This is useful for cross-compiling, running on arm-based or legacy runners, or when you require a .NET SDK/runtime for a specific architecture.
+This is useful for cross-compiling, running on arm-based or legacy runners, or when you require a .NET SDK/runtime for a specific architecture. 
 
 ```yaml
 steps:
