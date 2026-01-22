@@ -203,6 +203,20 @@ export class DotnetInstallScript {
     return this;
   }
 
+  // NEW: Add method to include architecture
+  public useArchitecture(architecture: string) {
+    if (!architecture || architecture === 'x64') {
+      // x64 is default, may be omitted, but you can force passing it
+      return this;
+    }
+    // The install-dotnet.ps1 and install-dotnet.sh use --architecture/-Architecture
+    this.useArguments(
+      IS_WINDOWS ? '-Architecture' : '--architecture',
+      architecture
+    );
+    return this;
+  }
+
   public async execute() {
     const getExecOutputOptions = {
       ignoreReturnCode: true,
@@ -250,14 +264,17 @@ export abstract class DotnetInstallDir {
   }
 }
 
+// UPDATED: Accept architecture in the constructor and propagate
 export class DotnetCoreInstaller {
   static {
     DotnetInstallDir.setEnvironmentVariable();
   }
 
+  // Add architecture parameter and store it
   constructor(
     private version: string,
-    private quality: QualityOptions
+    private quality: QualityOptions,
+    private architecture: string // NEW!
   ) {}
 
   public async installDotnet(): Promise<string | null> {
@@ -277,6 +294,8 @@ export class DotnetCoreInstaller {
       .useArguments(IS_WINDOWS ? '-Runtime' : '--runtime', 'dotnet')
       // Use latest stable version
       .useArguments(IS_WINDOWS ? '-Channel' : '--channel', 'LTS')
+      // ARCHITECTURE; pass along architecture for runtime (optional, but consistent)
+      .useArchitecture(this.architecture)
       .execute();
 
     if (runtimeInstallOutput.exitCode) {
@@ -300,6 +319,8 @@ export class DotnetCoreInstaller {
       )
       // Use version provided by user
       .useVersion(dotnetVersion, this.quality)
+      // ARCHITECTURE; pass along architecture for version
+      .useArchitecture(this.architecture)
       .execute();
 
     if (dotnetInstallOutput.exitCode) {

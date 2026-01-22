@@ -66,10 +66,18 @@ export async function run() {
         );
       }
 
+      // NEW: Read architecture input, default to 'x64'
+      const architecture = core.getInput('architecture') || 'x64';
+
       let dotnetInstaller: DotnetCoreInstaller;
       const uniqueVersions = new Set<string>(versions);
       for (const version of uniqueVersions) {
-        dotnetInstaller = new DotnetCoreInstaller(version, quality);
+        // UPDATED: Pass architecture as the third argument
+        dotnetInstaller = new DotnetCoreInstaller(
+          version,
+          quality,
+          architecture
+        );
         const installedVersion = await dotnetInstaller.installDotnet();
         installedDotnetVersions.push(installedVersion);
       }
