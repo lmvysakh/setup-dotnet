@@ -8,8 +8,7 @@ inputs:
   dotnet-version:
     description: |
       Optional SDK version(s) to use. If not provided, will install global.json version when available.
-      Supports multi-arch and per-line architecture syntax:
-        8.0.x
+      Supports multi-arch architecture syntax:
         version: 8.0.x, arch: x64
         version: 8.0.x, arch: arm64
       You may mix both simple and architecture-specific lines. When 'arch' is not specified, the 'architecture' input or default will be used.
