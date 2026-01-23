@@ -91,7 +91,7 @@ describe('installer tests', () => {
         {version: '8.0.x', architecture: 'arm64'},
         {version: '8.0.x', architecture: 'x64'}
       ];
-      let invokedWith: any[] = [];
+      const invokedWith: any[] = [];
 
       // Spy on the installDotnet method to track calls
       const installDotnetSpy = jest

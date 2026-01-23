@@ -37,7 +37,7 @@ export function parseVersionArchInput(
       let version = '';
       let architecture = defaultArch;
       const parts = line.split(',');
-      for (let part of parts) {
+      for (const part of parts) {
         const [k, v] = part.split(':').map(s => s.trim());
         if (k.toLowerCase() === 'version') version = v;
         else if (
