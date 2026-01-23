@@ -339,7 +339,42 @@ describe('installer tests', () => {
         });
       }
 
-      // NEW TESTS: EXPLICITLY CHECK ARCHITECTURE ARGUMENT
+      it(`should supply 'architecture' argument to the installation script if architecture is provided`, async () => {
+        const inputVersion = '6.0.100';
+        const inputQuality = '' as QualityOptions;
+        const inputArchitecture = 'arm64';
+        const stdout = `Fictitious dotnet version ${inputVersion} is installed`;
+
+        getExecOutputSpy.mockImplementation(() => {
+          return Promise.resolve({
+            exitCode: 0,
+            stdout: `${stdout}`,
+            stderr: ''
+          });
+        });
+        maxSatisfyingSpy.mockImplementation(() => inputVersion);
+
+        const dotnetInstaller = new installer.DotnetCoreInstaller(
+          inputVersion,
+          inputQuality,
+          inputArchitecture
+        );
+
+        await dotnetInstaller.installDotnet();
+
+        const callIndex = 1;
+
+        const scriptArguments = (
+          getExecOutputSpy.mock.calls[callIndex][1] as string[]
+        ).join(' ');
+        const expectedArgument = IS_WINDOWS
+          ? `-Architecture ${inputArchitecture}`
+          : `--architecture ${inputArchitecture}`;
+
+        expect(scriptArguments).toContain(expectedArgument);
+      });
+
+      // Additional architecture tests from second file
       it(`should supply 'architecture' argument to the installation script when provided`, async () => {
         const inputVersion = '7.0.300';
         const inputQuality = '' as QualityOptions;
