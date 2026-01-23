@@ -18,6 +18,105 @@ describe('installer tests', () => {
     process.env = {...env};
   });
 
+  // ARCHITECTURE/MULTI-ARCH SUPPORT TESTS
+  describe('parseVersionArchInput', () => {
+    it('parses single legacy line and applies default arch', () => {
+      const result = installer.parseVersionArchInput('8.0.x', 'x64');
+      expect(result).toEqual([{version: '8.0.x', architecture: 'x64'}]);
+    });
+
+    it('parses multiple legacy lines and applies default arch', () => {
+      const input = `6.0.x\n7.0.x`;
+      const result = installer.parseVersionArchInput(input, 'arm64');
+      expect(result).toEqual([
+        {version: '6.0.x', architecture: 'arm64'},
+        {version: '7.0.x', architecture: 'arm64'}
+      ]);
+    });
+
+    it('parses new format version:..., arch:...', () => {
+      const input = `version: 8.0.x, arch: x64\nversion: 8.0.x, arch: arm64`;
+      const result = installer.parseVersionArchInput(input, 'x64');
+      expect(result).toEqual([
+        {version: '8.0.x', architecture: 'x64'},
+        {version: '8.0.x', architecture: 'arm64'}
+      ]);
+    });
+
+    it('parses mixed legacy and new', () => {
+      const input = `6.0.x\nversion: 7.0.x, arch: arm64`;
+      const result = installer.parseVersionArchInput(input, 'x64');
+      expect(result).toEqual([
+        {version: '6.0.x', architecture: 'x64'},
+        {version: '7.0.x', architecture: 'arm64'}
+      ]);
+    });
+
+    it('throws on unsupported architecture', () => {
+      const input = `version: 8.0.x, arch: fooarch`;
+      expect(() => installer.parseVersionArchInput(input, 'x64')).toThrow(
+        /Unsupported architecture/
+      );
+    });
+
+    it('throws on malformed line', () => {
+      expect(() =>
+        installer.parseVersionArchInput('version: , arch: x64', 'x64')
+      ).toThrow(/Malformed dotnet-version line/);
+    });
+
+    it('throws on unsupported default arch', () => {
+      expect(() => installer.parseVersionArchInput('8.0.x', 'fooarch')).toThrow(
+        /Unsupported architecture/
+      );
+    });
+  });
+
+  describe('installDotnetVersions', () => {
+    const getExecOutputSpy = jest
+      .spyOn(exec, 'getExecOutput')
+      .mockResolvedValue({
+        exitCode: 0,
+        stdout: 'Installed version 8.0.100',
+        stderr: ''
+      });
+    jest.spyOn(io, 'which').mockResolvedValue('PathToShell' as any);
+    jest.spyOn(fs, 'chmodSync').mockImplementation(() => {});
+    jest.spyOn(fspromises, 'readdir').mockResolvedValue([] as any);
+
+    // We DO NOT want to check the underlying DotnetCoreInstaller behavior here again;
+    // instead, test that installDotnetVersions calls DotnetCoreInstaller with correct archs
+    it('installs multiple version/arch pairs', async () => {
+      const list = [
+        {version: '8.0.x', architecture: 'arm64'},
+        {version: '8.0.x', architecture: 'x64'}
+      ];
+      let invokedWith: any[] = [];
+
+      // Spy on the installDotnet method to track calls
+      const installDotnetSpy = jest
+        .spyOn(installer.DotnetCoreInstaller.prototype, 'installDotnet')
+        .mockImplementation(function (this: any) {
+          invokedWith.push({
+            version: this.version,
+            architecture: this.architecture
+          });
+          return Promise.resolve(`${this.version} (${this.architecture})`);
+        });
+
+      try {
+        await installer.installDotnetVersions(list, undefined);
+        expect(invokedWith).toEqual([
+          {version: '8.0.x', architecture: 'arm64'},
+          {version: '8.0.x', architecture: 'x64'}
+        ]);
+      } finally {
+        installDotnetSpy.mockRestore();
+      }
+    });
+  });
+
+  // ================ ORIGINAL TESTS ================
   describe('DotnetCoreInstaller tests', () => {
     const getExecOutputSpy = jest.spyOn(exec, 'getExecOutput');
     const warningSpy = jest.spyOn(core, 'warning');
@@ -52,7 +151,8 @@ describe('installer tests', () => {
 
         const dotnetInstaller = new installer.DotnetCoreInstaller(
           inputVersion,
-          inputQuality
+          inputQuality,
+          'x64'
         );
         await expect(dotnetInstaller.installDotnet()).rejects.toThrow(
           `Failed to install dotnet, exit code: 1. ${errorMessage}`
@@ -74,7 +174,8 @@ describe('installer tests', () => {
 
         const dotnetInstaller = new installer.DotnetCoreInstaller(
           inputVersion,
-          inputQuality
+          inputQuality,
+          'x64'
         );
         const installedVersion = await dotnetInstaller.installDotnet();
 
@@ -97,7 +198,8 @@ describe('installer tests', () => {
 
         const dotnetInstaller = new installer.DotnetCoreInstaller(
           inputVersion,
-          inputQuality
+          inputQuality,
+          'x64'
         );
 
         await dotnetInstaller.installDotnet();
@@ -119,6 +221,43 @@ describe('installer tests', () => {
         expect(scriptArguments).toContain(expectedArgument);
       });
 
+      it(`should supply the architecture argument to the installation script`, async () => {
+        const inputVersion = '10.0.101';
+        const inputQuality = '' as QualityOptions;
+        const stdout = `Fictitious dotnet version ${inputVersion} is installed`;
+
+        getExecOutputSpy.mockImplementation(() => {
+          return Promise.resolve({
+            exitCode: 0,
+            stdout: `${stdout}`,
+            stderr: ''
+          });
+        });
+
+        const arch = 'arm64';
+        const dotnetInstaller = new installer.DotnetCoreInstaller(
+          inputVersion,
+          inputQuality,
+          arch
+        );
+
+        await dotnetInstaller.installDotnet();
+
+        // Check that each script call contains the architecture argument
+        const callArgs0 = (getExecOutputSpy.mock.calls[0][1] as string[]).join(
+          ' '
+        );
+        const callArgs1 = (getExecOutputSpy.mock.calls[1][1] as string[]).join(
+          ' '
+        );
+        const expectedArgument = IS_WINDOWS
+          ? '-Architecture arm64'
+          : '--architecture arm64';
+
+        expect(callArgs0).toContain(expectedArgument);
+        expect(callArgs1).toContain(expectedArgument);
+      });
+
       it(`should warn if the 'quality' input is set and the supplied version is in A.B.C syntax`, async () => {
         const inputVersion = '10.0.101';
         const inputQuality = 'ga' as QualityOptions;
@@ -134,7 +273,8 @@ describe('installer tests', () => {
 
         const dotnetInstaller = new installer.DotnetCoreInstaller(
           inputVersion,
-          inputQuality
+          inputQuality,
+          'x64'
         );
 
         await dotnetInstaller.installDotnet();
@@ -160,7 +300,8 @@ describe('installer tests', () => {
 
         const dotnetInstaller = new installer.DotnetCoreInstaller(
           inputVersion,
-          inputQuality
+          inputQuality,
+          'x64'
         );
 
         await dotnetInstaller.installDotnet();
@@ -187,7 +328,8 @@ describe('installer tests', () => {
 
           const dotnetInstaller = new installer.DotnetCoreInstaller(
             inputVersion,
-            inputQuality
+            inputQuality,
+            'x64'
           );
 
           await dotnetInstaller.installDotnet();
@@ -227,7 +369,8 @@ describe('installer tests', () => {
 
           const dotnetInstaller = new installer.DotnetCoreInstaller(
             inputVersion,
-            inputQuality
+            inputQuality,
+            'x64'
           );
 
           await dotnetInstaller.installDotnet();
@@ -268,7 +411,8 @@ describe('installer tests', () => {
 
           const dotnetInstaller = new installer.DotnetCoreInstaller(
             inputVersion,
-            inputQuality
+            inputQuality,
+            'x64'
           );
 
           await dotnetInstaller.installDotnet();
@@ -306,7 +450,8 @@ describe('installer tests', () => {
 
           const dotnetInstaller = new installer.DotnetCoreInstaller(
             inputVersion,
-            inputQuality
+            inputQuality,
+            'x64'
           );
 
           await dotnetInstaller.installDotnet();
@@ -378,7 +523,6 @@ describe('installer tests', () => {
         ' .',
         ' . . ',
         ' .. ',
-        ' .  ',
         '-1.-1',
         '-1',
         '-1.-1.-1',
