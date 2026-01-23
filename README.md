@@ -49,6 +49,45 @@ steps:
       9.0.x
 - run: dotnet build <my project>
 ```
+
+## Architecture selection
+
+The `architecture` input allows you to specify the target architecture to install (such as `x64`, `x86`, or `arm64`). If not supplied, the default is `x64`.
+This is useful for cross-compiling, running on arm-based or legacy runners, or when you require a .NET SDK/runtime for a specific architecture. 
+
+```yaml
+steps:
+- uses: actions/checkout@v5
+- uses: actions/setup-dotnet@v5
+  with:
+    dotnet-version: '8.0.x'
+    architecture: arm64
+- run: dotnet --info
+```
+
+**Supported values:** `x64`, `x86`, `arm64`.
+
+> **Note:** The installed .NET architecture must be compatible with your runner's processor and OS. Not all versions of the .NET SDK/runtime are available for every architecture.
+
+## Installing multiple architectures
+
+The `dotnet-version` input also supports specifying architecture for each .NET version installed. This is useful when you need to install the same .NET version for different architectures (e.g., x64 and arm64).
+
+**Multiple Architecture specification syntax**:
+```yml
+steps:
+- uses: actions/checkout@v4
+- name: Setup dotnet with multiple architectures
+  uses: actions/setup-dotnet@v4
+  with:
+    dotnet-version: | 
+      version: 8.0.x, arch: x64
+      version: 8.0.x, arch: arm64
+- run: dotnet build <my project>
+```
+
+> **Note**: When no architecture is specified, the installation script will automatically detect and use the appropriate architecture for the current system. The `arch` field accepts values like `x64`, `x86`, `arm64`, etc., as supported by the .NET installation scripts.
+
 ## Supported version syntax
 
 The `dotnet-version` input supports following syntax:
@@ -339,3 +378,4 @@ The scripts and documentation in this project are released under the [MIT Licens
 ## Contributions
 
 Contributions are welcome! See [Contributor's Guide](docs/contributors.md)
+
