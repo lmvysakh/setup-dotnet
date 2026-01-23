@@ -1,5 +1,10 @@
 import * as core from '@actions/core';
-import {DotnetCoreInstaller, DotnetInstallDir} from './installer';
+import {
+  parseVersionArchInput,
+  installDotnetVersions,
+  DotnetInstallDir,
+  VersionArchEntry
+} from './installer';
 import * as fs from 'fs';
 import path from 'path';
 import semver from 'semver';
@@ -21,18 +26,22 @@ export type QualityOptions = (typeof qualityOptions)[number];
 
 export async function run() {
   try {
-    //
-    // dotnet-version is optional, but needs to be provided for most use cases.
-    // If supplied, install / use from the tool cache.
-    // global-version-file may be specified to point to a specific global.json
-    // and will be used to install an additional version.
-    // If not supplied, look for version in ./global.json.
-    // If a valid version still can't be identified, nothing will be installed.
-    // Proxy, auth, (etc) are still set up, even if no version is identified
-    //
-    const versions = core.getMultilineInput('dotnet-version');
     const installedDotnetVersions: (string | null)[] = [];
+    const defaultArchitecture = core.getInput('architecture') || 'x64';
 
+    //
+    // dotnet-version may be specified using legacy (string or multiline) or new multi-arch syntax.
+    // Eventually, need a flat string for advanced parsing.
+    //
+    let dotnetVersionInput = '';
+    const multiline = core.getMultilineInput('dotnet-version');
+    if (multiline.length > 1) {
+      dotnetVersionInput = multiline.join('\n');
+    } else {
+      dotnetVersionInput = core.getInput('dotnet-version');
+    }
+
+    // Handle global.json file if present
     const globalJsonFileInput = core.getInput('global-json-file');
     if (globalJsonFileInput) {
       const globalJsonPath = path.resolve(process.cwd(), globalJsonFileInput);
@@ -41,15 +50,22 @@ export async function run() {
           `The specified global.json file '${globalJsonFileInput}' does not exist`
         );
       }
-      versions.push(getVersionFromGlobalJson(globalJsonPath));
+      const globalVersion = getVersionFromGlobalJson(globalJsonPath);
+      if (globalVersion) {
+        dotnetVersionInput +=
+          (dotnetVersionInput.length ? '\n' : '') + globalVersion;
+      }
     }
 
-    if (!versions.length) {
-      // Try to fall back to global.json
+    // Try global.json fallback if nothing provided
+    if (!dotnetVersionInput || dotnetVersionInput.trim().length === 0) {
       core.debug('No version found, trying to find version from global.json');
       const globalJsonPath = path.join(process.cwd(), 'global.json');
       if (fs.existsSync(globalJsonPath)) {
-        versions.push(getVersionFromGlobalJson(globalJsonPath));
+        const globalVersion = getVersionFromGlobalJson(globalJsonPath);
+        if (globalVersion) {
+          dotnetVersionInput = globalVersion;
+        }
       } else {
         core.info(
           `The global.json wasn't found in the root directory. No .NET version will be installed.`
@@ -57,22 +73,27 @@ export async function run() {
       }
     }
 
-    if (versions.length) {
+    // Main multi-arch parsing/installation block
+    if (dotnetVersionInput && dotnetVersionInput.trim().length > 0) {
       const quality = core.getInput('dotnet-quality') as QualityOptions;
-
       if (quality && !qualityOptions.includes(quality)) {
         throw new Error(
           `Value '${quality}' is not supported for the 'dotnet-quality' option. Supported values are: daily, signed, validated, preview, ga.`
         );
       }
 
-      let dotnetInstaller: DotnetCoreInstaller;
-      const uniqueVersions = new Set<string>(versions);
-      for (const version of uniqueVersions) {
-        dotnetInstaller = new DotnetCoreInstaller(version, quality);
-        const installedVersion = await dotnetInstaller.installDotnet();
-        installedDotnetVersions.push(installedVersion);
-      }
+      // Only parse lines that aren't empty
+      const versionArchEntries: VersionArchEntry[] = parseVersionArchInput(
+        dotnetVersionInput,
+        defaultArchitecture
+      );
+
+      // Install each distinct version/arch combo
+      const installedVersionInfo = await installDotnetVersions(
+        versionArchEntries,
+        quality
+      );
+      installedVersionInfo.forEach(i => installedDotnetVersions.push(i));
       DotnetInstallDir.addToPath();
     }
 
@@ -91,7 +112,7 @@ export async function run() {
 
     const matchersPath = path.join(__dirname, '..', '..', '.github');
     core.info(`##[add-matcher]${path.join(matchersPath, 'csc.json')}`);
-  } catch (error) {
+  } catch (error: any) {
     core.setFailed(error.message);
   }
 }

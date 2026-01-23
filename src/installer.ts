@@ -10,6 +10,79 @@ import semver from 'semver';
 import {IS_WINDOWS, PLATFORM} from './utils';
 import {QualityOptions} from './setup-dotnet';
 
+// -------------------------------
+// Multi-arch input support (added)
+// -------------------------------
+export interface VersionArchEntry {
+  version: string;
+  architecture: string;
+}
+
+// Accepts dotnet-version input and parses into [{version, arch}, ...]
+export function parseVersionArchInput(
+  dotnetVersionInput: string,
+  defaultArch: string
+): VersionArchEntry[] {
+  const SUPPORTED_ARCHES = ['x64', 'x86', 'arm64'];
+  const lines = dotnetVersionInput
+    .split(/\r?\n/)
+    .map(l => l.trim())
+    .filter(Boolean);
+
+  if (!lines.length) throw new Error(`dotnet-version input is required`);
+
+  return lines.map(line => {
+    // Only new format has "version:"
+    if (line.toLowerCase().startsWith('version:')) {
+      let version = '';
+      let architecture = defaultArch;
+      const parts = line.split(',');
+      for (const part of parts) {
+        const [k, v] = part.split(':').map(s => s.trim());
+        if (k.toLowerCase() === 'version') version = v;
+        else if (
+          k.toLowerCase() === 'arch' ||
+          k.toLowerCase() === 'architecture'
+        )
+          architecture = v;
+      }
+      if (!version) throw new Error(`Malformed dotnet-version line: ${line}`);
+      if (!SUPPORTED_ARCHES.includes(architecture))
+        throw new Error(
+          `Unsupported architecture: ${architecture}. Supported: ${SUPPORTED_ARCHES.join(', ')}`
+        );
+      return {version, architecture};
+    } else {
+      // Legacy style: '6.0.x'
+      if (!SUPPORTED_ARCHES.includes(defaultArch))
+        throw new Error(
+          `Unsupported architecture: ${defaultArch}. Supported: ${SUPPORTED_ARCHES.join(', ')}`
+        );
+      return {version: line, architecture: defaultArch};
+    }
+  });
+}
+
+// Main multi-arch installation loop
+export async function installDotnetVersions(
+  entries: VersionArchEntry[],
+  quality?: QualityOptions
+): Promise<(string | null)[]> {
+  const installedVersions: (string | null)[] = [];
+  for (const {version, architecture} of entries) {
+    core.startGroup(`Installing .NET version ${version} (${architecture})`);
+    const installedVersion = await new DotnetCoreInstaller(
+      version,
+      quality,
+      architecture
+    ).installDotnet();
+    installedVersions.push(installedVersion);
+    core.endGroup();
+  }
+  return installedVersions;
+}
+// -------------------------------
+
 export interface DotnetVersion {
   type: string;
   value: string;
@@ -203,6 +276,15 @@ export class DotnetInstallScript {
     return this;
   }
 
+  // --- ADDED: pass in architecture argument ---
+  public useArchitecture(arch: string) {
+    if (arch && arch !== '') {
+      this.useArguments(IS_WINDOWS ? '-Architecture' : '--architecture', arch);
+    }
+    return this;
+  }
+  // ---
+
   public async execute() {
     const getExecOutputOptions = {
       ignoreReturnCode: true,
@@ -257,26 +339,22 @@ export class DotnetCoreInstaller {
 
   constructor(
     private version: string,
-    private quality: QualityOptions
+    private quality: QualityOptions | undefined,
+    private architecture: string // Added - pass arch to installer
   ) {}
 
   public async installDotnet(): Promise<string | null> {
     const versionResolver = new DotnetVersionResolver(this.version);
     const dotnetVersion = await versionResolver.createDotnetVersion();
 
-    /**
-     * Install dotnet runitme first in order to get
-     * the latest stable version of dotnet CLI
-     */
+    // Install dotnet runtime first for CLI
     const runtimeInstallOutput = await new DotnetInstallScript()
-      // If dotnet CLI is already installed - avoid overwriting it
       .useArguments(
         IS_WINDOWS ? '-SkipNonVersionedFiles' : '--skip-non-versioned-files'
       )
-      // Install only runtime + CLI
       .useArguments(IS_WINDOWS ? '-Runtime' : '--runtime', 'dotnet')
-      // Use latest stable version
       .useArguments(IS_WINDOWS ? '-Channel' : '--channel', 'LTS')
+      .useArchitecture(this.architecture) // Pass arch
       .execute();
 
     if (runtimeInstallOutput.exitCode) {
@@ -289,17 +367,13 @@ export class DotnetCoreInstaller {
       );
     }
 
-    /**
-     * Install dotnet over the latest version of
-     * dotnet CLI
-     */
+    // Install SDK for target version/arch
     const dotnetInstallOutput = await new DotnetInstallScript()
-      // Don't overwrite CLI because it should be already installed
       .useArguments(
         IS_WINDOWS ? '-SkipNonVersionedFiles' : '--skip-non-versioned-files'
       )
-      // Use version provided by user
       .useVersion(dotnetVersion, this.quality)
+      .useArchitecture(this.architecture) // Pass arch
       .execute();
 
     if (dotnetInstallOutput.exitCode) {

@@ -6,7 +6,19 @@ branding:
   color: green
 inputs:
   dotnet-version:
-    description: 'Optional SDK version(s) to use. If not provided, will install global.json version when available. Examples: 2.2.104, 3.1, 3.1.x, 3.x, 6.0.2xx'
+    description: |
+      Optional SDK version(s) to use. If not provided, will install global.json version when available.
+      Supports multi-arch architecture syntax:
+        version: 8.0.x, arch: x64
+        version: 8.0.x, arch: arm64
+      You may mix both simple and architecture-specific lines. When 'arch' is not specified, the 'architecture' input or default will be used.
+      Examples: 2.2.104, 3.1, 3.1.x, 3.x, 6.0.2xx
+  architecture:
+    description: >
+      Optional target architecture for .NET (x64, x86, arm64). Default is x64.
+      This can be overridden per-entry via the dotnet-version input (see above).
+    required: false
+    default: x64
   dotnet-quality:
     description: 'Optional quality of the build. The possible values are: daily, signed, validated, preview, ga.'
   global-json-file:
