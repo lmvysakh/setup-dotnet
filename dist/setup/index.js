@@ -56991,6 +56991,18 @@ class DotnetInstallScript {
         this.scriptArguments.push(...args);
         return this;
     }
+    /**
+     * Conditionally sets the installer architecture.
+     *
+     * IMPORTANT: When architecture is empty/undefined, do NOT pass the architecture flag at all.
+     * This preserves the install scripts' native auto-detection logic.
+     */
+    useArchitecture(architecture) {
+        if (!architecture)
+            return this;
+        this.useArguments(utils_1.IS_WINDOWS ? '-Architecture' : '--architecture', architecture);
+        return this;
+    }
     useVersion(dotnetVersion, quality) {
         if (dotnetVersion.type) {
             this.useArguments(dotnetVersion.type, dotnetVersion.value);
@@ -57042,12 +57054,14 @@ exports.DotnetInstallDir = DotnetInstallDir;
 class DotnetCoreInstaller {
     version;
     quality;
+    architecture;
     static {
         DotnetInstallDir.setEnvironmentVariable();
     }
-    constructor(version, quality) {
+    constructor(version, quality, architecture) {
         this.version = version;
         this.quality = quality;
+        this.architecture = architecture;
     }
     async installDotnet() {
         const versionResolver = new DotnetVersionResolver(this.version);
@@ -57057,6 +57071,7 @@ class DotnetCoreInstaller {
          * the latest stable version of dotnet CLI
          */
         const runtimeInstallOutput = await new DotnetInstallScript()
+            .useArchitecture(this.architecture)
             // If dotnet CLI is already installed - avoid overwriting it
             .useArguments(utils_1.IS_WINDOWS ? '-SkipNonVersionedFiles' : '--skip-non-versioned-files')
             // Install only runtime + CLI
@@ -57076,6 +57091,7 @@ class DotnetCoreInstaller {
          * dotnet CLI
          */
         const dotnetInstallOutput = await new DotnetInstallScript()
+            .useArchitecture(this.architecture)
             // Don't overwrite CLI because it should be already installed
             .useArguments(utils_1.IS_WINDOWS ? '-SkipNonVersionedFiles' : '--skip-non-versioned-files')
             // Use version provided by user
@@ -57162,6 +57178,7 @@ const qualityOptions = [
     'preview',
     'ga'
 ];
+const supportedArchitectures = ['x64', 'arm64'];
 async function run() {
     try {
         //
@@ -57173,22 +57190,27 @@ async function run() {
         // If a valid version still can't be identified, nothing will be installed.
         // Proxy, auth, (etc) are still set up, even if no version is identified
         //
-        const versions = core.getMultilineInput('dotnet-version');
+        const versions = core
+            .getMultilineInput('dotnet-version')
+            .map(v => v.trim())
+            .filter(Boolean);
         const installedDotnetVersions = [];
+        // Optional: when not set, we must not pass any architecture flag to preserve installer auto-detect
+        const architecture = getArchitectureInput();
         const globalJsonFileInput = core.getInput('global-json-file');
         if (globalJsonFileInput) {
             const globalJsonPath = path_1.default.resolve(process.cwd(), globalJsonFileInput);
             if (!fs.existsSync(globalJsonPath)) {
                 throw new Error(`The specified global.json file '${globalJsonFileInput}' does not exist`);
             }
-            versions.push(getVersionFromGlobalJson(globalJsonPath));
+            versions.push(getVersionFromGlobalJson(globalJsonPath).trim());
         }
         if (!versions.length) {
             // Try to fall back to global.json
             core.debug('No version found, trying to find version from global.json');
             const globalJsonPath = path_1.default.join(process.cwd(), 'global.json');
             if (fs.existsSync(globalJsonPath)) {
-                versions.push(getVersionFromGlobalJson(globalJsonPath));
+                versions.push(getVersionFromGlobalJson(globalJsonPath).trim());
             }
             else {
                 core.info(`The global.json wasn't found in the root directory. No .NET version will be installed.`);
@@ -57200,9 +57222,10 @@ async function run() {
                 throw new Error(`Value '${quality}' is not supported for the 'dotnet-quality' option. Supported values are: daily, signed, validated, preview, ga.`);
             }
             let dotnetInstaller;
+            // Treat dotnet-version as a set: ignore duplicates (after trim) to avoid duplicate installs
             const uniqueVersions = new Set(versions);
             for (const version of uniqueVersions) {
-                dotnetInstaller = new installer_1.DotnetCoreInstaller(version, quality);
+                dotnetInstaller = new installer_1.DotnetCoreInstaller(version, quality, architecture);
                 const installedVersion = await dotnetInstaller.installDotnet();
                 installedDotnetVersions.push(installedVersion);
             }
@@ -57242,6 +57265,18 @@ async function run() {
     catch (error) {
         core.setFailed(error.message);
     }
+}
+function getArchitectureInput() {
+    // IMPORTANT: when empty, return '' and DO NOT pass any architecture flag to the installer.
+    // This preserves the install scripts' real auto-detection behavior.
+    const raw = (core.getInput('architecture') || '').trim();
+    if (!raw)
+        return '';
+    const normalized = raw.toLowerCase();
+    if (supportedArchitectures.includes(normalized)) {
+        return normalized;
+    }
+    throw new Error(`Value '${raw}' is not supported for the 'architecture' option. Supported values are: ${supportedArchitectures.join(', ')}.`);
 }
 function getVersionFromGlobalJson(globalJsonPath) {
     let version = '';

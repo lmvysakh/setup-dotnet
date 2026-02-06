@@ -43,6 +43,9 @@ describe('setup-dotnet tests', () => {
       getMultilineInputSpy.mockImplementation(input => inputs[input as string]);
       getInputSpy.mockImplementation(input => inputs[input as string]);
       getBooleanInputSpy.mockImplementation(input => inputs[input as string]);
+
+      // architecture input is optional; default to empty unless a test sets it
+      inputs['architecture'] = inputs['architecture'] ?? '';
     });
 
     afterEach(() => {
@@ -90,9 +93,32 @@ describe('setup-dotnet tests', () => {
       expect(setFailedSpy).toHaveBeenCalledWith(expectedErrorMessage);
     });
 
+    it('should fail the action if architecture is supplied but its value is not supported', async () => {
+      inputs['global-json-file'] = '';
+      inputs['dotnet-version'] = ['10.0'];
+      inputs['dotnet-quality'] = '';
+      inputs['architecture'] = 'x86';
+
+      const expectedErrorMessage = `Value '${inputs['architecture']}' is not supported for the 'architecture' option. Supported values are: x64, arm64.`;
+
+      await setup.run();
+      expect(setFailedSpy).toHaveBeenCalledWith(expectedErrorMessage);
+    });
+
     it('should call installDotnet() multiple times if dotnet-version multiline input is provided', async () => {
       inputs['global-json-file'] = '';
       inputs['dotnet-version'] = ['9.0', '10.0'];
+      inputs['dotnet-quality'] = '';
+
+      installDotnetSpy.mockImplementation(() => Promise.resolve(''));
+
+      await setup.run();
+      expect(installDotnetSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should ignore duplicates in dotnet-version (after trimming) to avoid duplicate installs', async () => {
+      inputs['global-json-file'] = '';
+      inputs['dotnet-version'] = ['9.0', ' 9.0 ', '10.0', '10.0'];
       inputs['dotnet-quality'] = '';
 
       installDotnetSpy.mockImplementation(() => Promise.resolve(''));

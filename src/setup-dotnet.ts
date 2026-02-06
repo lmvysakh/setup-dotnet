@@ -18,6 +18,9 @@ const qualityOptions = [
   'ga'
 ] as const;
 
+const supportedArchitectures = ['x64', 'arm64'] as const;
+type SupportedArchitecture = (typeof supportedArchitectures)[number];
+
 export type QualityOptions = (typeof qualityOptions)[number];
 
 export async function run() {
@@ -31,8 +34,15 @@ export async function run() {
     // If a valid version still can't be identified, nothing will be installed.
     // Proxy, auth, (etc) are still set up, even if no version is identified
     //
-    const versions = core.getMultilineInput('dotnet-version');
+    const versions = core
+      .getMultilineInput('dotnet-version')
+      .map(v => v.trim())
+      .filter(Boolean);
+
     const installedDotnetVersions: (string | null)[] = [];
+
+    // Optional: when not set, we must not pass any architecture flag to preserve installer auto-detect
+    const architecture = getArchitectureInput();
 
     const globalJsonFileInput = core.getInput('global-json-file');
     if (globalJsonFileInput) {
@@ -42,7 +52,7 @@ export async function run() {
           `The specified global.json file '${globalJsonFileInput}' does not exist`
         );
       }
-      versions.push(getVersionFromGlobalJson(globalJsonPath));
+      versions.push(getVersionFromGlobalJson(globalJsonPath).trim());
     }
 
     if (!versions.length) {
@@ -50,7 +60,7 @@ export async function run() {
       core.debug('No version found, trying to find version from global.json');
       const globalJsonPath = path.join(process.cwd(), 'global.json');
       if (fs.existsSync(globalJsonPath)) {
-        versions.push(getVersionFromGlobalJson(globalJsonPath));
+        versions.push(getVersionFromGlobalJson(globalJsonPath).trim());
       } else {
         core.info(
           `The global.json wasn't found in the root directory. No .NET version will be installed.`
@@ -68,12 +78,20 @@ export async function run() {
       }
 
       let dotnetInstaller: DotnetCoreInstaller;
+
+      // Treat dotnet-version as a set: ignore duplicates (after trim) to avoid duplicate installs
       const uniqueVersions = new Set<string>(versions);
+
       for (const version of uniqueVersions) {
-        dotnetInstaller = new DotnetCoreInstaller(version, quality);
+        dotnetInstaller = new DotnetCoreInstaller(
+          version,
+          quality,
+          architecture
+        );
         const installedVersion = await dotnetInstaller.installDotnet();
         installedDotnetVersions.push(installedVersion);
       }
+
       DotnetInstallDir.addToPath();
 
       const workloadsInput = core.getInput('workloads');
@@ -117,6 +135,25 @@ export async function run() {
   } catch (error) {
     core.setFailed(error.message);
   }
+}
+
+function getArchitectureInput(): SupportedArchitecture | '' {
+  // IMPORTANT: when empty, return '' and DO NOT pass any architecture flag to the installer.
+  // This preserves the install scripts' real auto-detection behavior.
+  const raw = (core.getInput('architecture') || '').trim();
+  if (!raw) return '';
+
+  const normalized = raw.toLowerCase();
+
+  if ((supportedArchitectures as readonly string[]).includes(normalized)) {
+    return normalized as SupportedArchitecture;
+  }
+
+  throw new Error(
+    `Value '${raw}' is not supported for the 'architecture' option. Supported values are: ${supportedArchitectures.join(
+      ', '
+    )}.`
+  );
 }
 
 function getVersionFromGlobalJson(globalJsonPath: string): string {

@@ -49,6 +49,30 @@ steps:
       9.0.x
 - run: dotnet build <my project>
 ```
+
+## Selecting .NET SDK architecture (optional)
+
+By default, the installation scripts **auto-detect** and install the appropriate architecture for the runner.  
+To explicitly select a .NET SDK architecture, use the `architecture` input.
+
+Supported values (currently): `x64`, `arm64`.
+
+> **Note**: If `architecture` is not set (or is empty), `setup-dotnet` will **not** pass any architecture flag to the installer, so auto-detection still happens.
+
+**Example: install multiple SDK versions for a specific architecture**
+```yml
+steps:
+- uses: actions/checkout@v6
+- name: Setup dotnet (x64)
+  uses: actions/setup-dotnet@v5
+  with:
+    dotnet-version: |
+      8.0.x
+      9.0.x
+    architecture: x64
+- run: dotnet build <my project>
+```
+
 ## Supported version syntax
 
 The `dotnet-version` input supports following syntax:
@@ -355,6 +379,3 @@ The scripts and documentation in this project are released under the [MIT Licens
 ## Contributions
 
 Contributions are welcome! See [Contributor's Guide](docs/contributors.md)
-  
-
-   
