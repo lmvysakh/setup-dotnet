@@ -18,7 +18,7 @@ const qualityOptions = [
   'ga'
 ] as const;
 
-const supportedArchitectures = ['x64', 'arm64'] as const;
+const supportedArchitectures = ['x64', 'x86', 'arm64'] as const;
 type SupportedArchitecture = (typeof supportedArchitectures)[number];
 
 export type QualityOptions = (typeof qualityOptions)[number];

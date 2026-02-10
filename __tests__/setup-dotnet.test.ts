@@ -101,9 +101,9 @@ describe('setup-dotnet tests', () => {
       inputs['global-json-file'] = '';
       inputs['dotnet-version'] = ['10.0'];
       inputs['dotnet-quality'] = '';
-      inputs['architecture'] = 'x86';
+      inputs['architecture'] = 'amd64';
 
-      const expectedErrorMessage = `Value '${inputs['architecture']}' is not supported for the 'architecture' option. Supported values are: x64, arm64.`;
+      const expectedErrorMessage = `Value '${inputs['architecture']}' is not supported for the 'architecture' option. Supported values are: x64, x86, arm64.`;
 
       await setup.run();
       expect(setFailedSpy).toHaveBeenCalledWith(expectedErrorMessage);

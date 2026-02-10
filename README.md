@@ -55,7 +55,7 @@ steps:
 By default, the installation scripts **auto-detect** and install the appropriate architecture for the runner.  
 To explicitly select a .NET SDK architecture, use the `architecture` input.
 
-Supported values (currently): `x64`, `arm64`.
+Supported values (currently): `x64`, `x86`, `arm64`.
 
 > **Note**: If `architecture` is not set (or is empty), `setup-dotnet` will **not** pass any architecture flag to the installer, so auto-detection still happens.
 
