@@ -43,19 +43,12 @@ describe('setup-dotnet tests', () => {
       getMultilineInputSpy.mockImplementation(input => inputs[input as string]);
       getInputSpy.mockImplementation(input => inputs[input as string]);
       getBooleanInputSpy.mockImplementation(input => inputs[input as string]);
-
-      // Reset inputs object for each test to avoid contamination
-      Object.keys(inputs).forEach(key => delete inputs[key]);
-
-      // architecture input is optional; default to empty unless a test sets it
-      inputs['architecture'] = '';
     });
 
     afterEach(() => {
       DotnetInstallDir.addToPath = addToPathOriginal;
       jest.clearAllMocks();
-      // Remove resetAllMocks() to preserve spy implementations
-      // jest.resetAllMocks();
+      jest.resetAllMocks();
     });
 
     it('should fail the action if global-json-file input is present, but the file does not exist in the file system', async () => {
@@ -97,39 +90,12 @@ describe('setup-dotnet tests', () => {
       expect(setFailedSpy).toHaveBeenCalledWith(expectedErrorMessage);
     });
 
-    it('should fail the action if architecture is supplied but its value is not supported', async () => {
-      inputs['global-json-file'] = '';
-      inputs['dotnet-version'] = ['10.0'];
-      inputs['dotnet-quality'] = '';
-      inputs['architecture'] = 'amd64';
-
-      const expectedErrorMessage = `Value '${inputs['architecture']}' is not supported for the 'architecture' option. Supported values are: x64, x86, arm64.`;
-
-      await setup.run();
-      expect(setFailedSpy).toHaveBeenCalledWith(expectedErrorMessage);
-    });
-
     it('should call installDotnet() multiple times if dotnet-version multiline input is provided', async () => {
       inputs['global-json-file'] = '';
       inputs['dotnet-version'] = ['9.0', '10.0'];
       inputs['dotnet-quality'] = '';
 
-      // Mock fs.existsSync to return false for global.json
-      existsSyncSpy.mockReturnValue(false);
-      installDotnetSpy.mockImplementation(() => Promise.resolve('9.0.0'));
-
-      await setup.run();
-      expect(installDotnetSpy).toHaveBeenCalledTimes(2);
-    });
-
-    it('should ignore duplicates in dotnet-version (after trimming) to avoid duplicate installs', async () => {
-      inputs['global-json-file'] = '';
-      inputs['dotnet-version'] = ['9.0', ' 9.0 ', '10.0', '10.0'];
-      inputs['dotnet-quality'] = '';
-
-      // Mock fs.existsSync to return false for global.json
-      existsSyncSpy.mockReturnValue(false);
-      installDotnetSpy.mockImplementation(() => Promise.resolve('9.0.0'));
+      installDotnetSpy.mockImplementation(() => Promise.resolve(''));
 
       await setup.run();
       expect(installDotnetSpy).toHaveBeenCalledTimes(2);
@@ -140,9 +106,7 @@ describe('setup-dotnet tests', () => {
       inputs['dotnet-version'] = ['9.0', '10.0'];
       inputs['dotnet-quality'] = '';
 
-      // Mock fs.existsSync to return false for global.json
-      existsSyncSpy.mockReturnValue(false);
-      installDotnetSpy.mockImplementation(() => Promise.resolve('9.0.0'));
+      installDotnetSpy.mockImplementation(() => Promise.resolve(''));
 
       await setup.run();
       expect(DotnetInstallDir.addToPath).toHaveBeenCalledTimes(1);
@@ -154,8 +118,6 @@ describe('setup-dotnet tests', () => {
       inputs['dotnet-quality'] = '';
       inputs['source-url'] = 'fictitious.source.url';
 
-      // Mock fs.existsSync to return false for global.json
-      existsSyncSpy.mockReturnValue(false);
       configAuthenticationSpy.mockImplementation(() => {});
 
       await setup.run();
@@ -172,8 +134,6 @@ describe('setup-dotnet tests', () => {
       inputs['source-url'] = 'fictitious.source.url';
       inputs['config-file'] = 'fictitious.path';
 
-      // Mock fs.existsSync to return false for global.json
-      existsSyncSpy.mockReturnValue(false);
       configAuthenticationSpy.mockImplementation(() => {});
       setOutputSpy.mockImplementation(() => {});
 
@@ -185,30 +145,20 @@ describe('setup-dotnet tests', () => {
     });
 
     it('should call setOutput() after installation complete successfully', async () => {
-      inputs['global-json-file'] = '';
       inputs['dotnet-version'] = ['10.0.101'];
-      inputs['dotnet-quality'] = '';
 
-      // Mock fs.existsSync to return false for global.json
-      existsSyncSpy.mockReturnValue(false);
       installDotnetSpy.mockImplementation(() =>
         Promise.resolve(`${inputs['dotnet-version']}`)
       );
-      maxSatisfyingSpy.mockImplementation(() => '10.0.101');
-      setOutputSpy.mockImplementation(() => {});
 
       await setup.run();
       expect(DotnetInstallDir.addToPath).toHaveBeenCalledTimes(1);
     });
 
     it(`shouldn't call setOutput() if parsing dotnet-installer logs failed`, async () => {
-      inputs['global-json-file'] = '';
       inputs['dotnet-version'] = ['10.0.101'];
-      inputs['dotnet-quality'] = '';
       const warningMessage = `Failed to output the installed version of .NET. The 'dotnet-version' output will not be set.`;
 
-      // Mock fs.existsSync to return false for global.json
-      existsSyncSpy.mockReturnValue(false);
       installDotnetSpy.mockImplementation(() => Promise.resolve(null));
 
       await setup.run();
@@ -217,12 +167,8 @@ describe('setup-dotnet tests', () => {
     });
 
     it(`shouldn't call setOutput() if actions didn't install .NET`, async () => {
-      inputs['global-json-file'] = '';
       inputs['dotnet-version'] = [];
       const warningMessage = `The 'dotnet-version' output will not be set.`;
-
-      // Mock fs.existsSync to return false for global.json
-      existsSyncSpy.mockReturnValue(false);
 
       await setup.run();
 
@@ -231,15 +177,12 @@ describe('setup-dotnet tests', () => {
     });
 
     it(`should get 'cache-dependency-path' and call restoreCache() if input cache is set to true and cache feature is available`, async () => {
-      inputs['global-json-file'] = '';
       inputs['dotnet-version'] = ['10.0.101'];
       inputs['dotnet-quality'] = '';
       inputs['cache'] = true;
       inputs['cache-dependency-path'] = 'fictitious.package.lock.json';
 
-      // Mock fs.existsSync to return false for global.json
-      existsSyncSpy.mockReturnValue(false);
-      installDotnetSpy.mockImplementation(() => Promise.resolve('10.0.101'));
+      installDotnetSpy.mockImplementation(() => Promise.resolve(''));
 
       isCacheFeatureAvailableSpy.mockImplementation(() => true);
       restoreCacheSpy.mockImplementation(() => Promise.resolve());

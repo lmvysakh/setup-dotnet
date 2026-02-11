@@ -57178,7 +57178,16 @@ const qualityOptions = [
     'preview',
     'ga'
 ];
-const supportedArchitectures = ['x64', 'x86', 'arm64'];
+const supportedArchitectures = [
+    'x64',
+    'x86',
+    'arm64',
+    'amd64',
+    'arm',
+    's390x',
+    'ppc64le',
+    'loongarch64'
+];
 async function run() {
     try {
         //

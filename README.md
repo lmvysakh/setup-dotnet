@@ -50,14 +50,9 @@ steps:
 - run: dotnet build <my project>
 ```
 
-## Selecting .NET SDK architecture (optional)
+## Architecture
 
-By default, the installation scripts **auto-detect** and install the appropriate architecture for the runner.  
-To explicitly select a .NET SDK architecture, use the `architecture` input.
-
-Supported values (currently): `x64`, `x86`, `arm64`.
-
-> **Note**: If `architecture` is not set (or is empty), `setup-dotnet` will **not** pass any architecture flag to the installer, so auto-detection still happens.
+Using the architecture input, it is possible to specify the required .NET SDK architecture. Possible values:  `x64`, `x86`, `arm64`, `amd64`, `arm`, `s390x`, `ppc64le`, `loongarch64`. If the input is not specified, the architecture defaults to the host OS architecture
 
 **Example: install multiple SDK versions for a specific architecture**
 ```yml
