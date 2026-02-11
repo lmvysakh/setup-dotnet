@@ -56991,12 +56991,7 @@ class DotnetInstallScript {
         this.scriptArguments.push(...args);
         return this;
     }
-    /**
-     * Conditionally sets the installer architecture.
-     *
-     * IMPORTANT: When architecture is empty/undefined, do NOT pass the architecture flag at all.
-     * This preserves the install scripts' native auto-detection logic.
-     */
+    // When architecture is empty/undefined, the installer auto-detects the current runner architecture.
     useArchitecture(architecture) {
         if (!architecture)
             return this;
@@ -57204,7 +57199,6 @@ async function run() {
             .map(v => v.trim())
             .filter(Boolean);
         const installedDotnetVersions = [];
-        // Optional: when not set, we must not pass any architecture flag to preserve installer auto-detect
         const architecture = getArchitectureInput();
         const globalJsonFileInput = core.getInput('global-json-file');
         if (globalJsonFileInput) {
@@ -57231,7 +57225,6 @@ async function run() {
                 throw new Error(`Value '${quality}' is not supported for the 'dotnet-quality' option. Supported values are: daily, signed, validated, preview, ga.`);
             }
             let dotnetInstaller;
-            // Treat dotnet-version as a set: ignore duplicates (after trim) to avoid duplicate installs
             const uniqueVersions = new Set(versions);
             for (const version of uniqueVersions) {
                 dotnetInstaller = new installer_1.DotnetCoreInstaller(version, quality, architecture);
@@ -57276,8 +57269,6 @@ async function run() {
     }
 }
 function getArchitectureInput() {
-    // IMPORTANT: when empty, return '' and DO NOT pass any architecture flag to the installer.
-    // This preserves the install scripts' real auto-detection behavior.
     const raw = (core.getInput('architecture') || '').trim();
     if (!raw)
         return '';

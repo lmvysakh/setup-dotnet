@@ -50,7 +50,6 @@ export async function run() {
 
     const installedDotnetVersions: (string | null)[] = [];
 
-    // Optional: when not set, we must not pass any architecture flag to preserve installer auto-detect
     const architecture = getArchitectureInput();
 
     const globalJsonFileInput = core.getInput('global-json-file');
@@ -88,7 +87,6 @@ export async function run() {
 
       let dotnetInstaller: DotnetCoreInstaller;
 
-      // Treat dotnet-version as a set: ignore duplicates (after trim) to avoid duplicate installs
       const uniqueVersions = new Set<string>(versions);
 
       for (const version of uniqueVersions) {
@@ -147,8 +145,6 @@ export async function run() {
 }
 
 function getArchitectureInput(): SupportedArchitecture | '' {
-  // IMPORTANT: when empty, return '' and DO NOT pass any architecture flag to the installer.
-  // This preserves the install scripts' real auto-detection behavior.
   const raw = (core.getInput('architecture') || '').trim();
   if (!raw) return '';
 

@@ -185,12 +185,7 @@ export class DotnetInstallScript {
     return this;
   }
 
-  /**
-   * Conditionally sets the installer architecture.
-   *
-   * IMPORTANT: When architecture is empty/undefined, do NOT pass the architecture flag at all.
-   * This preserves the install scripts' native auto-detection logic.
-   */
+  // When architecture is empty/undefined, the installer auto-detects the current runner architecture.
   public useArchitecture(architecture?: string) {
     if (!architecture) return this;
 
