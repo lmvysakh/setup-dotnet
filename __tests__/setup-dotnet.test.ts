@@ -251,7 +251,7 @@ describe('setup-dotnet tests', () => {
       inputs['dotnet-quality'] = '';
       inputs['architecture'] = 'x688';
 
-      const expectedErrorMessage = `Value 'x688' is not supported for the 'architecture' option. Supported values are: x64, x86, arm64, amd64, arm, s390x, ppc64le, loongarch64.`;
+      const expectedErrorMessage = `Value 'x688' is not supported for the 'architecture' option. Supported values are: x64, x86, arm64, amd64, arm, s390x, ppc64le, riscv64.`;
 
       await setup.run();
       expect(setFailedSpy).toHaveBeenCalledWith(expectedErrorMessage);

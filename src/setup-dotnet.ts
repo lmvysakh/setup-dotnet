@@ -26,7 +26,7 @@ const supportedArchitectures = [
   'arm',
   's390x',
   'ppc64le',
-  'loongarch64'
+  'riscv64'
 ] as const;
 type SupportedArchitecture = (typeof supportedArchitectures)[number];
 

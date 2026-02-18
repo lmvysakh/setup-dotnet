@@ -57181,7 +57181,7 @@ const supportedArchitectures = [
     'arm',
     's390x',
     'ppc64le',
-    'loongarch64'
+    'riscv64'
 ];
 async function run() {
     try {
