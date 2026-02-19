@@ -57170,6 +57170,7 @@ const installer_1 = __nccwpck_require__(12574);
 const fs = __importStar(__nccwpck_require__(57147));
 const path_1 = __importDefault(__nccwpck_require__(71017));
 const semver_1 = __importDefault(__nccwpck_require__(11383));
+const os_1 = __importDefault(__nccwpck_require__(22037));
 const auth = __importStar(__nccwpck_require__(17573));
 const cache_utils_1 = __nccwpck_require__(41678);
 const cache_restore_1 = __nccwpck_require__(19517);
@@ -57241,6 +57242,11 @@ async function run() {
                 installedDotnetVersions.push(installedVersion);
             }
             installer_1.DotnetInstallDir.addToPath();
+            if (architecture && architecture.toLowerCase() !== os_1.default.arch().toLowerCase()) {
+                const crossArchDir = path_1.default.join(installer_1.DotnetInstallDir.dirPath, architecture);
+                core.addPath(crossArchDir);
+                core.exportVariable('DOTNET_ROOT', crossArchDir);
+            }
             const workloadsInput = core.getInput('workloads');
             if (workloadsInput) {
                 const workloads = workloadsInput
