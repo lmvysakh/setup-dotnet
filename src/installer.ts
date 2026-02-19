@@ -362,4 +362,3 @@ export class DotnetCoreInstaller {
     return matchedResult.groups!.version;
   }
 }
-
