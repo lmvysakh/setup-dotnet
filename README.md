@@ -49,6 +49,25 @@ steps:
       9.0.x
 - run: dotnet build <my project>
 ```
+
+## Architecture
+
+Using the architecture input, it is possible to specify the required .NET SDK architecture. Possible values:  `x64`, `x86`, `arm64`, `amd64`, `arm`, `s390x`, `ppc64le`, `riscv64`. If the input is not specified, the architecture defaults to the host OS architecture (not all of the architectures are available on all platforms).
+
+**Example: Install multiple SDK versions for a specific architecture**
+```yml
+steps:
+- uses: actions/checkout@v6
+- name: Setup dotnet (x64)
+  uses: actions/setup-dotnet@v5
+  with:
+    dotnet-version: |
+      8.0.x
+      9.0.x
+    architecture: x64
+- run: dotnet build <my project>
+```
+
 ## Supported version syntax
 
 The `dotnet-version` input supports following syntax:
