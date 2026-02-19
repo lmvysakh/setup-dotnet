@@ -57063,10 +57063,14 @@ class DotnetCoreInstaller {
         const dotnetVersion = await versionResolver.createDotnetVersion();
         const crossArchInstallDir = this.architecture &&
             this.architecture.toLowerCase() !== os_1.default.arch().toLowerCase()
-            ? [
-                utils_1.IS_WINDOWS ? '-InstallDir' : '--install-dir',
-                path_1.default.join(DotnetInstallDir.dirPath, this.architecture)
-            ]
+            ? utils_1.IS_WINDOWS
+                ? [
+                    `-InstallDir "${path_1.default.join(DotnetInstallDir.dirPath, this.architecture)}"`
+                ]
+                : [
+                    '--install-dir',
+                    path_1.default.join(DotnetInstallDir.dirPath, this.architecture)
+                ]
             : [];
         /**
          * Install dotnet runitme first in order to get
@@ -57242,7 +57246,8 @@ async function run() {
                 installedDotnetVersions.push(installedVersion);
             }
             installer_1.DotnetInstallDir.addToPath();
-            if (architecture && architecture.toLowerCase() !== os_1.default.arch().toLowerCase()) {
+            if (architecture &&
+                architecture.toLowerCase() !== os_1.default.arch().toLowerCase()) {
                 const crossArchDir = path_1.default.join(installer_1.DotnetInstallDir.dirPath, architecture);
                 core.addPath(crossArchDir);
                 core.exportVariable('DOTNET_ROOT', crossArchDir);

@@ -101,7 +101,10 @@ export async function run() {
       }
 
       DotnetInstallDir.addToPath();
-      if (architecture && architecture.toLowerCase() !== os.arch().toLowerCase()) {
+      if (
+        architecture &&
+        architecture.toLowerCase() !== os.arch().toLowerCase()
+      ) {
         const crossArchDir = path.join(DotnetInstallDir.dirPath, architecture);
         core.addPath(crossArchDir);
         core.exportVariable('DOTNET_ROOT', crossArchDir);

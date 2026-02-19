@@ -280,10 +280,14 @@ export class DotnetCoreInstaller {
     const crossArchInstallDir =
       this.architecture &&
       this.architecture.toLowerCase() !== os.arch().toLowerCase()
-        ? [
-            IS_WINDOWS ? '-InstallDir' : '--install-dir',
-            path.join(DotnetInstallDir.dirPath, this.architecture)
-          ]
+        ? IS_WINDOWS
+          ? [
+              `-InstallDir "${path.join(DotnetInstallDir.dirPath, this.architecture)}"`
+            ]
+          : [
+              '--install-dir',
+              path.join(DotnetInstallDir.dirPath, this.architecture)
+            ]
         : [];
 
     /**
