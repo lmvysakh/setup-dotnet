@@ -57046,6 +57046,15 @@ class DotnetInstallDir {
     }
 }
 exports.DotnetInstallDir = DotnetInstallDir;
+function normalizeArch(arch) {
+    switch (arch.toLowerCase()) {
+        case 'amd64':
+        case 'x64':
+            return 'x64';
+        default:
+            return arch.toLowerCase();
+    }
+}
 class DotnetCoreInstaller {
     version;
     quality;
@@ -57061,6 +57070,17 @@ class DotnetCoreInstaller {
     async installDotnet() {
         const versionResolver = new DotnetVersionResolver(this.version);
         const dotnetVersion = await versionResolver.createDotnetVersion();
+        const crossArchInstallDir = this.architecture &&
+            normalizeArch(this.architecture) !== normalizeArch(os_1.default.arch())
+            ? utils_1.IS_WINDOWS
+                ? [
+                    `-InstallDir "${path_1.default.join(DotnetInstallDir.dirPath, this.architecture)}"`
+                ]
+                : [
+                    '--install-dir',
+                    path_1.default.join(DotnetInstallDir.dirPath, this.architecture)
+                ]
+            : [];
         /**
          * Install dotnet runitme first in order to get
          * the latest stable version of dotnet CLI
@@ -57073,6 +57093,7 @@ class DotnetCoreInstaller {
             .useArguments(utils_1.IS_WINDOWS ? '-Runtime' : '--runtime', 'dotnet')
             // Use latest stable version
             .useArguments(utils_1.IS_WINDOWS ? '-Channel' : '--channel', 'LTS')
+            .useArguments(...crossArchInstallDir)
             .execute();
         if (runtimeInstallOutput.exitCode) {
             /**
@@ -57091,6 +57112,7 @@ class DotnetCoreInstaller {
             .useArguments(utils_1.IS_WINDOWS ? '-SkipNonVersionedFiles' : '--skip-non-versioned-files')
             // Use version provided by user
             .useVersion(dotnetVersion, this.quality)
+            .useArguments(...crossArchInstallDir)
             .execute();
         if (dotnetInstallOutput.exitCode) {
             throw new Error(`Failed to install dotnet, exit code: ${dotnetInstallOutput.exitCode}. ${dotnetInstallOutput.stderr}`);
@@ -57161,6 +57183,7 @@ const installer_1 = __nccwpck_require__(12574);
 const fs = __importStar(__nccwpck_require__(57147));
 const path_1 = __importDefault(__nccwpck_require__(71017));
 const semver_1 = __importDefault(__nccwpck_require__(11383));
+const os_1 = __importDefault(__nccwpck_require__(22037));
 const auth = __importStar(__nccwpck_require__(17573));
 const cache_utils_1 = __nccwpck_require__(41678);
 const cache_restore_1 = __nccwpck_require__(19517);
@@ -57232,6 +57255,12 @@ async function run() {
                 installedDotnetVersions.push(installedVersion);
             }
             installer_1.DotnetInstallDir.addToPath();
+            if (architecture &&
+                architecture.toLowerCase() !== os_1.default.arch().toLowerCase()) {
+                const crossArchDir = path_1.default.join(installer_1.DotnetInstallDir.dirPath, architecture);
+                core.addPath(crossArchDir);
+                core.exportVariable('DOTNET_ROOT', crossArchDir);
+            }
             const workloadsInput = core.getInput('workloads');
             if (workloadsInput) {
                 const workloads = workloadsInput

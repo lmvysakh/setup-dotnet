@@ -4,6 +4,7 @@ import {DotnetCoreInstaller, DotnetInstallDir} from './installer';
 import * as fs from 'fs';
 import path from 'path';
 import semver from 'semver';
+import os from 'os';
 import * as auth from './authutil';
 import {isCacheFeatureAvailable} from './cache-utils';
 import {restoreCache} from './cache-restore';
@@ -100,6 +101,14 @@ export async function run() {
       }
 
       DotnetInstallDir.addToPath();
+      if (
+        architecture &&
+        architecture.toLowerCase() !== os.arch().toLowerCase()
+      ) {
+        const crossArchDir = path.join(DotnetInstallDir.dirPath, architecture);
+        core.addPath(crossArchDir);
+        core.exportVariable('DOTNET_ROOT', crossArchDir);
+      }
 
       const workloadsInput = core.getInput('workloads');
       if (workloadsInput) {

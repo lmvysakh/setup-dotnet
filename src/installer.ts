@@ -262,6 +262,16 @@ export abstract class DotnetInstallDir {
   }
 }
 
+function normalizeArch(arch: string): string {
+  switch (arch.toLowerCase()) {
+    case 'amd64':
+    case 'x64':
+      return 'x64';
+    default:
+      return arch.toLowerCase();
+  }
+}
+
 export class DotnetCoreInstaller {
   static {
     DotnetInstallDir.setEnvironmentVariable();
@@ -277,6 +287,19 @@ export class DotnetCoreInstaller {
     const versionResolver = new DotnetVersionResolver(this.version);
     const dotnetVersion = await versionResolver.createDotnetVersion();
 
+    const crossArchInstallDir =
+      this.architecture &&
+      normalizeArch(this.architecture) !== normalizeArch(os.arch())
+        ? IS_WINDOWS
+          ? [
+              `-InstallDir "${path.join(DotnetInstallDir.dirPath, this.architecture)}"`
+            ]
+          : [
+              '--install-dir',
+              path.join(DotnetInstallDir.dirPath, this.architecture)
+            ]
+        : [];
+
     /**
      * Install dotnet runitme first in order to get
      * the latest stable version of dotnet CLI
@@ -291,6 +314,7 @@ export class DotnetCoreInstaller {
       .useArguments(IS_WINDOWS ? '-Runtime' : '--runtime', 'dotnet')
       // Use latest stable version
       .useArguments(IS_WINDOWS ? '-Channel' : '--channel', 'LTS')
+      .useArguments(...crossArchInstallDir)
       .execute();
 
     if (runtimeInstallOutput.exitCode) {
@@ -315,6 +339,7 @@ export class DotnetCoreInstaller {
       )
       // Use version provided by user
       .useVersion(dotnetVersion, this.quality)
+      .useArguments(...crossArchInstallDir)
       .execute();
 
     if (dotnetInstallOutput.exitCode) {
@@ -337,3 +362,4 @@ export class DotnetCoreInstaller {
     return matchedResult.groups!.version;
   }
 }
+
