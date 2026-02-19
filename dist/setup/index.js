@@ -57061,6 +57061,13 @@ class DotnetCoreInstaller {
     async installDotnet() {
         const versionResolver = new DotnetVersionResolver(this.version);
         const dotnetVersion = await versionResolver.createDotnetVersion();
+        const crossArchInstallDir = this.architecture &&
+            this.architecture.toLowerCase() !== os_1.default.arch().toLowerCase()
+            ? [
+                utils_1.IS_WINDOWS ? '-InstallDir' : '--install-dir',
+                path_1.default.join(DotnetInstallDir.dirPath, this.architecture)
+            ]
+            : [];
         /**
          * Install dotnet runitme first in order to get
          * the latest stable version of dotnet CLI
@@ -57073,6 +57080,7 @@ class DotnetCoreInstaller {
             .useArguments(utils_1.IS_WINDOWS ? '-Runtime' : '--runtime', 'dotnet')
             // Use latest stable version
             .useArguments(utils_1.IS_WINDOWS ? '-Channel' : '--channel', 'LTS')
+            .useArguments(...crossArchInstallDir)
             .execute();
         if (runtimeInstallOutput.exitCode) {
             /**
@@ -57091,6 +57099,7 @@ class DotnetCoreInstaller {
             .useArguments(utils_1.IS_WINDOWS ? '-SkipNonVersionedFiles' : '--skip-non-versioned-files')
             // Use version provided by user
             .useVersion(dotnetVersion, this.quality)
+            .useArguments(...crossArchInstallDir)
             .execute();
         if (dotnetInstallOutput.exitCode) {
             throw new Error(`Failed to install dotnet, exit code: ${dotnetInstallOutput.exitCode}. ${dotnetInstallOutput.stderr}`);
