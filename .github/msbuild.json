@@ -1,7 +1,7 @@
 {
     "problemMatcher": [
         {
-            "owner": "csc",
+            "owner": "msbuild",
             "pattern": [
                 {
                     "regexp": "^([^\\s].*)\\s+:\\s+(error|warning)\\s+([a-zA-Z]+(?<!MSB)\\d+):\\s*(.*?)(?:\\s+\\[(.*?)\\])?$",
