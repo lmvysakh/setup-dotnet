@@ -5,7 +5,7 @@
 
 This action sets up a [.NET CLI](https://github.com/dotnet/sdk) environment for use in actions by:
 
-- optionally downloading and caching a version(s) of dotnet by SDK version(s) and adding to PATH
+- optionally downloading and installing  version(s) of dotnet by SDK version(s), adding to PATH, and caching dependencies
 - registering problem matchers for error output
 - setting up authentication to private package sources like GitHub Packages
 

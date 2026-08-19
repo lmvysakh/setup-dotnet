@@ -106689,6 +106689,7 @@ async function run() {
         }
         const matchersPath = external_path_default().join(external_path_default().dirname((0,external_url_.fileURLToPath)(import.meta.url)), '..', '..', '.github');
         info(`##[add-matcher]${external_path_default().join(matchersPath, 'csc.json')}`);
+        info(`##[add-matcher]${external_path_default().join(matchersPath, 'msbuild.json')}`);
     }
     catch (error) {
         setFailed(error.message);
