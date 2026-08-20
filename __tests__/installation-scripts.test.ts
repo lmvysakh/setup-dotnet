@@ -36,25 +36,25 @@ describe('Dotnet installation scripts tests', () => {
   );
 
   it(
-    'Uses an up to date powershell download script',
-    async () => {
-      const httpCallbackClient = new hc.HttpClient(
-        'setup-dotnet-test',
-        [],
-        HTTP_CLIENT_OPTIONS
-      );
-      const response: hc.HttpClientResponse = await httpCallbackClient.get(
-        'https://dot.net/v1/dotnet-install.ps1'
-      );
-      expect(response.message.statusCode).toBe(200);
-      const upToDateContents: string = await response.readBody();
+    'Uses native Windows tools with managed fallbacks',
+    () => {
       const currentContents: string = fs
         .readFileSync(
           path.join(__dirname, '..', 'externals', 'install-dotnet.ps1')
         )
         .toString();
-      expect(normalizeFileContents(currentContents)).toBe(
-        normalizeFileContents(upToDateContents)
+
+      expect(currentContents).toContain(
+        '$env:DOTNET_INSTALL_SKIP_NATIVE_TOOLS -eq "1"'
+      );
+      expect(currentContents).toContain(
+        'Try-Extract-Dotnet-Package-With7Zip -ZipPath $ZipPath -OutPath $OutPath'
+      );
+      expect(currentContents).toContain(
+        'Try-DownloadFile-WithCurl -Source $Source -OutPath $OutPath'
+      );
+      expect(currentContents).toContain(
+        'DownloadFile-UsingHttpClient -Source $Source -OutPath $OutPath'
       );
     },
     TEST_TIMEOUT
