@@ -358,18 +358,13 @@ function Get-NativeToolPath([string]$Name) {
         return $null
     }
 
-    # Windows runners can have multiple executables with the same name
-    # (for example, System32 curl.exe and Git-for-Windows curl.exe).
-    # Select exactly one executable path.
     $command = Get-Command -Name $Name -CommandType Application -ErrorAction SilentlyContinue |
         Select-Object -First 1
-
     if ($null -eq $command) {
         Say-Verbose "Native tool '$Name' was not found. Falling back to the managed implementation."
         return $null
     }
 
-    Say-Verbose "Using native tool '$Name' from '$($command.Source)'."
     return $command.Source
 }
 
