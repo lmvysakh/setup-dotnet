@@ -358,21 +358,13 @@ function Get-NativeToolPath([string]$Name) {
         return $null
     }
 
-    # Multiple matching applications may be on PATH. For example, Git for
-    # Windows and System32 can both provide curl.exe. Select exactly one.
-    $command = @(
-        Get-Command -Name $Name -CommandType Application -ErrorAction SilentlyContinue
-    ) | Select-Object -First 1
-
+    $command = Get-Command -Name $Name -CommandType Application -ErrorAction SilentlyContinue
     if ($null -eq $command) {
         Say-Verbose "Native tool '$Name' was not found. Falling back to the managed implementation."
         return $null
     }
 
-    # Path is one concrete executable path. Do not return Source because
-    # multiple command results can otherwise become one joined string.
-    Say-Verbose "Using native tool '$Name' from '$($command.Path)'."
-    return [string]$command.Path
+    return $command.Source
 }
 
 function Get-FileExtension-For-Version([string]$VersionOrChannel) {
