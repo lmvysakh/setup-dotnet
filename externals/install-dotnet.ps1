@@ -358,7 +358,7 @@ function Get-NativeToolPath([string]$Name) {
         return $null
     }
 
-    $command = Get-Command -Name $Name -CommandType Application -ErrorAction SilentlyContinue
+    $command = Get-Command -Name $Name -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($null -eq $command) {
         Say-Verbose "Native tool '$Name' was not found. Falling back to the managed implementation."
         return $null
