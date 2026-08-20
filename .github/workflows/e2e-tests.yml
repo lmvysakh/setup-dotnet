@@ -12,6 +12,51 @@ on:
       - '**.md'
 
 jobs:
+  test-windows-native-installer:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Clear toolcache
+        shell: pwsh
+        run: __tests__/clear-toolcache.ps1 ${{ runner.os }}
+      - name: Verify native installer tools
+        shell: pwsh
+        run: |
+          $curl = Get-Command curl.exe -CommandType Application -ErrorAction Stop
+          $sevenZip = Get-Command 7z.exe -CommandType Application -ErrorAction Stop
+          Write-Host "curl.exe: $($curl.Source)"
+          Write-Host "7z.exe: $($sevenZip.Source)"
+      - name: Setup dotnet 9.0.308
+        uses: ./
+        with:
+          dotnet-version: 9.0.308
+      - name: Setup dotnet 10.0.101
+        uses: ./
+        with:
+          dotnet-version: 10.0.101
+      - name: Verify side-by-side SDK installation
+        shell: pwsh
+        run: __tests__/verify-dotnet.ps1 -Patterns "^9.0.308$", "^10.0.101$"
+
+  test-windows-native-installer-fallback:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Clear toolcache
+        shell: pwsh
+        run: __tests__/clear-toolcache.ps1 ${{ runner.os }}
+      - name: Setup dotnet with managed installer fallback
+        uses: ./
+        with:
+          dotnet-version: 10.0.101
+        env:
+          DOTNET_INSTALL_SKIP_NATIVE_TOOLS: '1'
+      - name: Verify dotnet
+        shell: pwsh
+        run: __tests__/verify-dotnet.ps1 -Patterns "^10.0.101$"
+
   test-setup-multiple-versions:
     runs-on: ${{ matrix.operating-system }}
     strategy:
@@ -42,6 +87,7 @@ jobs:
       - name: Verify dotnet
         shell: pwsh
         run: __tests__/verify-dotnet.ps1 -Patterns "^8.0.416$", "^9.0.308$", "^10.0.101$", "^8.0"
+
   test-setup-full-version:
     runs-on: ${{ matrix.operating-system }}
     strategy:
@@ -77,6 +123,7 @@ jobs:
       - name: Verify dotnet
         shell: pwsh
         run: __tests__/verify-dotnet.ps1 -Patterns "^10.0.101$", "^9.0.308$" -CheckNugetConfig
+
   test-setup-without-patch-version:
     runs-on: ${{ matrix.operating-system }}
     strategy:
@@ -108,6 +155,7 @@ jobs:
       - name: Verify dotnet
         shell: pwsh
         run: __tests__/verify-dotnet.ps1 -Patterns "^9.0", "^10.0"
+
   test-setup-prerelease-version:
     runs-on: ${{ matrix.operating-system }}
     strategy:
@@ -134,6 +182,7 @@ jobs:
       - name: Verify dotnet
         shell: pwsh
         run: __tests__/verify-dotnet.ps1 -Patterns "10.0.100-preview.7.25380.108"
+
   test-setup-latest-patch-version:
     runs-on: ${{ matrix.operating-system }}
     strategy:
