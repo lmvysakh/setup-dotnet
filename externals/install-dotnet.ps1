@@ -351,21 +351,24 @@ function Test-TarAvailable {
 }
 
 function Get-NativeToolPath([string]$Name) {
-    # Internal escape hatch for CI coverage and emergency mitigation.
-    # This is deliberately not exposed as an action input.
     if ($env:DOTNET_INSTALL_SKIP_NATIVE_TOOLS -eq "1") {
-        Say-Verbose "Skipping native tool '$Name' because DOTNET_INSTALL_SKIP_NATIVE_TOOLS is set."
+        Say "Skipping native tool '$Name' because DOTNET_INSTALL_SKIP_NATIVE_TOOLS is set."
         return $null
     }
 
-    $command = Get-Command -Name $Name -CommandType Application -ErrorAction SilentlyContinue 
-    if ($null -eq $command) {
-        Say-Verbose "Native tool '$Name' was not found. Falling back to the managed implementation."
+    $commands = @(
+        Get-Command -Name $Name -CommandType Application -ErrorAction SilentlyContinue
+    )
+
+    if ($commands.Count -eq 0) {
+        Say "Native tool '$Name' was not found. Falling back to the managed implementation."
         return $null
     }
 
-    Say-Verbose "Using native tool '$Name' from '$($command.Path)'."
-    return $command.Path
+    $commandPath = [string]$commands[0].Path
+
+    Say "Using native tool '$Name' from '$commandPath'."
+    return $commandPath
 }
 
 function Get-FileExtension-For-Version([string]$VersionOrChannel) {
