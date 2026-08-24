@@ -48,7 +48,7 @@ describe('Dotnet installation scripts tests', () => {
         '$env:DOTNET_INSTALL_SKIP_NATIVE_TOOLS -eq "1"'
       );
       expect(currentContents).toContain(
-        '$command = Get-Command -Name $Name -CommandType Application -ErrorAction SilentlyContinue'
+        'Get-Command -Name $Name -CommandType Application -ErrorAction SilentlyContinue'
       );
       expect(currentContents).toContain(
         'Try-Extract-Dotnet-Package-With7Zip -ZipPath $ZipPath -OutPath $OutPath'
