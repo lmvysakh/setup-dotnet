@@ -937,7 +937,7 @@ function Try-Extract-Dotnet-Package-With7Zip([string]$ZipPath, [string]$OutPath)
         }
 
         if ($EntriesToUnpack.Count -eq 0) {
-            Say-Verbose "No ZIP entries need to be extracted."
+            Say "No ZIP entries need to be extracted."
             return $true
         }
 
@@ -951,7 +951,7 @@ function Try-Extract-Dotnet-Package-With7Zip([string]$ZipPath, [string]$OutPath)
             (New-Object System.Text.UTF8Encoding($false))
         )
 
-        Say-Verbose "Extracting ZIP package with 7z.exe."
+        Say "Extracting ZIP package with 7z.exe."
         $sevenZipOutput = & $sevenZipPath x $ZipPath "-o$OutPath" "-i@$entryListPath" "-scsUTF-8" "-aoa" "-bso0" "-bsp0" "-y" 2>&1
 
         if ($LASTEXITCODE -ne 0) {
@@ -968,7 +968,7 @@ function Try-Extract-Dotnet-Package-With7Zip([string]$ZipPath, [string]$OutPath)
     }
     catch {
         # Returning false invokes the existing managed extractor below.
-        Say-Warning "Native 7z.exe extraction failed. Falling back to the managed extractor. Exception: $_"
+        Say "Native 7z.exe extraction failed. Falling back to the managed extractor. Exception: $_"
         return $false
     }
     finally {
@@ -1121,7 +1121,7 @@ function Try-DownloadFile-WithCurl($Source, [string]$OutPath) {
     # The existing HttpClient path supports default Windows proxy credentials.
     # Do not alter that behavior; use the managed downloader in this case.
     if ($ProxyUseDefaultCredentials) {
-        Say-Verbose "Skipping curl.exe because proxy default credentials were requested."
+        Say "Skipping curl.exe because proxy default credentials were requested."
         return $false
     }
 
@@ -1152,7 +1152,7 @@ function Try-DownloadFile-WithCurl($Source, [string]$OutPath) {
         # it may contain a sensitive feed token.
         $sourceWithCredential = "${Source}${FeedCredential}"
 
-        Say-Verbose "Downloading package with curl.exe."
+        Say "Downloading package with curl.exe."
         $curlOutput = & $curlPath @curlArguments $sourceWithCredential 2>&1
 
         if ($LASTEXITCODE -ne 0) {
@@ -1170,7 +1170,7 @@ function Try-DownloadFile-WithCurl($Source, [string]$OutPath) {
     catch {
         SafeRemoveFile -Path $OutPath
         # Returning false invokes the existing managed downloader below.
-        Say-Warning "Native curl.exe download failed. Falling back to the managed downloader. Exception: $_"
+        Say "Native curl.exe download failed. Falling back to the managed downloader. Exception: $_"
         return $false
     }
 }
