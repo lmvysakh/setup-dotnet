@@ -31,6 +31,10 @@ jest.unstable_mockModule('@actions/core', () => ({
 jest.unstable_mockModule('@actions/io', () => ({
   which: jest.fn()
 }));
+jest.unstable_mockModule('@actions/tool-cache', () => ({
+  downloadTool: jest.fn(),
+  extractZip: jest.fn()
+}));
 jest.unstable_mockModule('fs', () => {
   const actual = jest.requireActual('fs') as typeof import('fs');
   const chmodSync = jest.fn();
@@ -44,6 +48,7 @@ jest.unstable_mockModule('fs', () => {
 const exec = await import('@actions/exec');
 const core = await import('@actions/core');
 const io = await import('@actions/io');
+const toolCache = await import('@actions/tool-cache');
 const fs = await import('fs');
 const installer = await import('../src/installer.js');
 const {IS_WINDOWS} = await import('../src/utils.js');
@@ -373,6 +378,39 @@ describe('installer tests', () => {
           expect(scriptArguments).toContain(
             `-ProxyBypassList ${process.env['no_proxy']}`
           );
+        });
+      }
+
+      if (IS_WINDOWS) {
+        it('uses downloadTool and extractZip when the experimental Node installer is enabled', async () => {
+          process.env['SETUP_DOTNET_EXPERIMENTAL_NODE_WINDOWS_INSTALLER'] = '1';
+
+          jest.mocked(toolCache.downloadTool).mockResolvedValue(
+            'C:\\temp\\dotnet-sdk-9.0.317-win-x64.zip'
+          );
+          jest.mocked(toolCache.extractZip).mockResolvedValue('C:\\dotnet');
+
+          const dotnetInstaller = new installer.DotnetCoreInstaller(
+            '9.0.317',
+            '',
+            'x64'
+          );
+
+          await expect(dotnetInstaller.installDotnet()).resolves.toBe(
+            '9.0.317'
+          );
+
+          expect(toolCache.downloadTool).toHaveBeenCalledWith(
+            'https://builds.dotnet.microsoft.com/dotnet/Sdk/9.0.317/dotnet-sdk-9.0.317-win-x64.zip',
+            expect.stringContaining('dotnet-sdk-9.0.317-win-x64.zip')
+          );
+
+          expect(toolCache.extractZip).toHaveBeenCalledWith(
+            'C:\\temp\\dotnet-sdk-9.0.317-win-x64.zip',
+            expect.any(String)
+          );
+
+          expect(getExecOutputSpy).not.toHaveBeenCalled();
         });
       }
 

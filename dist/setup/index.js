@@ -43751,7 +43751,7 @@ var io_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argum
  * @param     dest      destination path
  * @param     options   optional. See CopyOptions.
  */
-function cp(source_1, dest_1) {
+function io_cp(source_1, dest_1) {
     return io_awaiter(this, arguments, void 0, function* (source, dest, options = {}) {
         const { force, recursive, copySourceDirectory } = readCopyOptions(options);
         const destStat = (yield ioUtil.exists(dest)) ? yield ioUtil.stat(dest) : null;
@@ -43820,7 +43820,7 @@ function mv(source_1, dest_1) {
  */
 function rmRF(inputPath) {
     return io_awaiter(this, void 0, void 0, function* () {
-        if (ioUtil.IS_WINDOWS) {
+        if (IS_WINDOWS) {
             // Check for invalid characters
             // https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
             if (/[*"<>|]/.test(inputPath)) {
@@ -43829,7 +43829,7 @@ function rmRF(inputPath) {
         }
         try {
             // note if path does not exist, error is silent
-            yield ioUtil.rm(inputPath, {
+            yield rm(inputPath, {
                 force: true,
                 maxRetries: 3,
                 recursive: true,
@@ -45058,8 +45058,8 @@ function getIDToken(aud) {
 // EXTERNAL MODULE: external "url"
 var external_url_ = __nccwpck_require__(7016);
 // EXTERNAL MODULE: ./node_modules/semver/index.js
-var semver = __nccwpck_require__(2088);
-var semver_default = /*#__PURE__*/__nccwpck_require__.n(semver);
+var node_modules_semver = __nccwpck_require__(2088);
+var semver_default = /*#__PURE__*/__nccwpck_require__.n(node_modules_semver);
 ;// CONCATENATED MODULE: ./src/utils.ts
 const utils_IS_WINDOWS = process.platform === 'win32';
 const PLATFORM = (() => {
@@ -45070,8 +45070,849 @@ const PLATFORM = (() => {
     return 'mac';
 })();
 
+;// CONCATENATED MODULE: ./node_modules/@actions/tool-cache/lib/manifest.js
+var manifest_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+
+
+
+// Internal object for testability (allows mocking in ESM)
+const _internal = {
+    readLinuxVersionFile() {
+        const lsbReleaseFile = '/etc/lsb-release';
+        const osReleaseFile = '/etc/os-release';
+        let contents = '';
+        if (external_fs_namespaceObject.existsSync(lsbReleaseFile)) {
+            contents = external_fs_namespaceObject.readFileSync(lsbReleaseFile).toString();
+        }
+        else if (external_fs_namespaceObject.existsSync(osReleaseFile)) {
+            contents = external_fs_namespaceObject.readFileSync(osReleaseFile).toString();
+        }
+        return contents;
+    }
+};
+function _findMatch(versionSpec, stable, candidates, archFilter) {
+    return manifest_awaiter(this, void 0, void 0, function* () {
+        const platFilter = os.platform();
+        let result;
+        let match;
+        let file;
+        for (const candidate of candidates) {
+            const version = candidate.version;
+            debug(`check ${version} satisfies ${versionSpec}`);
+            if (semver.satisfies(version, versionSpec) &&
+                (!stable || candidate.stable === stable)) {
+                file = candidate.files.find(item => {
+                    debug(`${item.arch}===${archFilter} && ${item.platform}===${platFilter}`);
+                    let chk = item.arch === archFilter && item.platform === platFilter;
+                    if (chk && item.platform_version) {
+                        const osVersion = _getOsVersion();
+                        if (osVersion === item.platform_version) {
+                            chk = true;
+                        }
+                        else {
+                            chk = semver.satisfies(osVersion, item.platform_version);
+                        }
+                    }
+                    return chk;
+                });
+                if (file) {
+                    debug(`matched ${candidate.version}`);
+                    match = candidate;
+                    break;
+                }
+            }
+        }
+        if (match && file) {
+            // clone since we're mutating the file list to be only the file that matches
+            result = Object.assign({}, match);
+            result.files = [file];
+        }
+        return result;
+    });
+}
+function _getOsVersion() {
+    // TODO: add windows and other linux, arm variants
+    // right now filtering on version is only an ubuntu and macos scenario for tools we build for hosted (python)
+    const plat = os.platform();
+    let version = '';
+    if (plat === 'darwin') {
+        version = cp.execSync('sw_vers -productVersion').toString();
+    }
+    else if (plat === 'linux') {
+        // lsb_release process not in some containers, readfile
+        // Run cat /etc/lsb-release
+        // DISTRIB_ID=Ubuntu
+        // DISTRIB_RELEASE=18.04
+        // DISTRIB_CODENAME=bionic
+        // DISTRIB_DESCRIPTION="Ubuntu 18.04.4 LTS"
+        const lsbContents = _internal.readLinuxVersionFile();
+        if (lsbContents) {
+            const lines = lsbContents.split('\n');
+            for (const line of lines) {
+                const parts = line.split('=');
+                if (parts.length === 2 &&
+                    (parts[0].trim() === 'VERSION_ID' ||
+                        parts[0].trim() === 'DISTRIB_RELEASE')) {
+                    version = parts[1].trim().replace(/^"/, '').replace(/"$/, '');
+                    break;
+                }
+            }
+        }
+    }
+    return version;
+}
+// Alias for backwards compatibility
+function _readLinuxVersionFile() {
+    return _internal.readLinuxVersionFile();
+}
+//# sourceMappingURL=manifest.js.map
+;// CONCATENATED MODULE: external "stream"
+const external_stream_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("stream");
+// EXTERNAL MODULE: external "util"
+var external_util_ = __nccwpck_require__(9023);
+;// CONCATENATED MODULE: ./node_modules/@actions/tool-cache/lib/retry-helper.js
+var retry_helper_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+/**
+ * Internal class for retries
+ */
+class RetryHelper {
+    constructor(maxAttempts, minSeconds, maxSeconds) {
+        if (maxAttempts < 1) {
+            throw new Error('max attempts should be greater than or equal to 1');
+        }
+        this.maxAttempts = maxAttempts;
+        this.minSeconds = Math.floor(minSeconds);
+        this.maxSeconds = Math.floor(maxSeconds);
+        if (this.minSeconds > this.maxSeconds) {
+            throw new Error('min seconds should be less than or equal to max seconds');
+        }
+    }
+    execute(action, isRetryable) {
+        return retry_helper_awaiter(this, void 0, void 0, function* () {
+            let attempt = 1;
+            while (attempt < this.maxAttempts) {
+                // Try
+                try {
+                    return yield action();
+                }
+                catch (err) {
+                    if (isRetryable && !isRetryable(err)) {
+                        throw err;
+                    }
+                    info(err.message);
+                }
+                // Sleep
+                const seconds = this.getSleepAmount();
+                info(`Waiting ${seconds} seconds before trying again`);
+                yield this.sleep(seconds);
+                attempt++;
+            }
+            // Last attempt
+            return yield action();
+        });
+    }
+    getSleepAmount() {
+        return (Math.floor(Math.random() * (this.maxSeconds - this.minSeconds + 1)) +
+            this.minSeconds);
+    }
+    sleep(seconds) {
+        return retry_helper_awaiter(this, void 0, void 0, function* () {
+            return new Promise(resolve => setTimeout(resolve, seconds * 1000));
+        });
+    }
+}
+//# sourceMappingURL=retry-helper.js.map
+;// CONCATENATED MODULE: ./node_modules/@actions/tool-cache/lib/tool-cache.js
+var tool_cache_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class HTTPError extends Error {
+    constructor(httpStatusCode) {
+        super(`Unexpected HTTP response: ${httpStatusCode}`);
+        this.httpStatusCode = httpStatusCode;
+        Object.setPrototypeOf(this, new.target.prototype);
+    }
+}
+const tool_cache_IS_WINDOWS = process.platform === 'win32';
+const IS_MAC = process.platform === 'darwin';
+const userAgent = 'actions/tool-cache';
+/**
+ * Download a tool from an url and stream it into a file
+ *
+ * @param url       url of tool to download
+ * @param dest      path to download tool
+ * @param auth      authorization header
+ * @param headers   other headers
+ * @returns         path to downloaded tool
+ */
+function downloadTool(url, dest, auth, headers) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        dest = dest || external_path_.join(_getTempDirectory(), external_crypto_namespaceObject.randomUUID());
+        yield mkdirP(external_path_.dirname(dest));
+        core_debug(`Downloading ${url}`);
+        core_debug(`Destination ${dest}`);
+        const maxAttempts = 3;
+        const minSeconds = _getGlobal('TEST_DOWNLOAD_TOOL_RETRY_MIN_SECONDS', 10);
+        const maxSeconds = _getGlobal('TEST_DOWNLOAD_TOOL_RETRY_MAX_SECONDS', 20);
+        const retryHelper = new RetryHelper(maxAttempts, minSeconds, maxSeconds);
+        return yield retryHelper.execute(() => tool_cache_awaiter(this, void 0, void 0, function* () {
+            return yield downloadToolAttempt(url, dest || '', auth, headers);
+        }), (err) => {
+            if (err instanceof HTTPError && err.httpStatusCode) {
+                // Don't retry anything less than 500, except 408 Request Timeout and 429 Too Many Requests
+                if (err.httpStatusCode < 500 &&
+                    err.httpStatusCode !== 408 &&
+                    err.httpStatusCode !== 429) {
+                    return false;
+                }
+            }
+            // Otherwise retry
+            return true;
+        });
+    });
+}
+function downloadToolAttempt(url, dest, auth, headers) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        if (external_fs_namespaceObject.existsSync(dest)) {
+            throw new Error(`Destination file path ${dest} already exists`);
+        }
+        // Get the response headers
+        const http = new lib_HttpClient(userAgent, [], {
+            allowRetries: false
+        });
+        if (auth) {
+            core_debug('set auth');
+            if (headers === undefined) {
+                headers = {};
+            }
+            headers.authorization = auth;
+        }
+        const response = yield http.get(url, headers);
+        if (response.message.statusCode !== 200) {
+            const err = new HTTPError(response.message.statusCode);
+            core_debug(`Failed to download from "${url}". Code(${response.message.statusCode}) Message(${response.message.statusMessage})`);
+            throw err;
+        }
+        // Download the response body
+        const pipeline = external_util_.promisify(external_stream_namespaceObject.pipeline);
+        const responseMessageFactory = _getGlobal('TEST_DOWNLOAD_TOOL_RESPONSE_MESSAGE_FACTORY', () => response.message);
+        const readStream = responseMessageFactory();
+        let succeeded = false;
+        try {
+            yield pipeline(readStream, external_fs_namespaceObject.createWriteStream(dest));
+            core_debug('download complete');
+            succeeded = true;
+            return dest;
+        }
+        finally {
+            // Error, delete dest before retry
+            if (!succeeded) {
+                core_debug('download failed');
+                try {
+                    yield rmRF(dest);
+                }
+                catch (err) {
+                    core_debug(`Failed to delete '${dest}'. ${err.message}`);
+                }
+            }
+        }
+    });
+}
+/**
+ * Extract a .7z file
+ *
+ * @param file     path to the .7z file
+ * @param dest     destination directory. Optional.
+ * @param _7zPath  path to 7zr.exe. Optional, for long path support. Most .7z archives do not have this
+ * problem. If your .7z archive contains very long paths, you can pass the path to 7zr.exe which will
+ * gracefully handle long paths. By default 7zdec.exe is used because it is a very small program and is
+ * bundled with the tool lib. However it does not support long paths. 7zr.exe is the reduced command line
+ * interface, it is smaller than the full command line interface, and it does support long paths. At the
+ * time of this writing, it is freely available from the LZMA SDK that is available on the 7zip website.
+ * Be sure to check the current license agreement. If 7zr.exe is bundled with your action, then the path
+ * to 7zr.exe can be pass to this function.
+ * @returns        path to the destination directory
+ */
+function extract7z(file, dest, _7zPath) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        ok(tool_cache_IS_WINDOWS, 'extract7z() not supported on current OS');
+        ok(file, 'parameter "file" is required');
+        dest = yield _createExtractFolder(dest);
+        const originalCwd = process.cwd();
+        process.chdir(dest);
+        if (_7zPath) {
+            try {
+                const logLevel = core.isDebug() ? '-bb1' : '-bb0';
+                const args = [
+                    'x', // eXtract files with full paths
+                    logLevel, // -bb[0-3] : set output log level
+                    '-bd', // disable progress indicator
+                    '-sccUTF-8', // set charset for for console input/output
+                    file
+                ];
+                const options = {
+                    silent: true
+                };
+                yield exec(`"${_7zPath}"`, args, options);
+            }
+            finally {
+                process.chdir(originalCwd);
+            }
+        }
+        else {
+            const escapedScript = path
+                .join(__dirname, '..', 'scripts', 'Invoke-7zdec.ps1')
+                .replace(/'/g, "''")
+                .replace(/"|\n|\r/g, ''); // double-up single quotes, remove double quotes and newlines
+            const escapedFile = file.replace(/'/g, "''").replace(/"|\n|\r/g, '');
+            const escapedTarget = dest.replace(/'/g, "''").replace(/"|\n|\r/g, '');
+            const command = `& '${escapedScript}' -Source '${escapedFile}' -Target '${escapedTarget}'`;
+            const args = [
+                '-NoLogo',
+                '-Sta',
+                '-NoProfile',
+                '-NonInteractive',
+                '-ExecutionPolicy',
+                'Unrestricted',
+                '-Command',
+                command
+            ];
+            const options = {
+                silent: true
+            };
+            try {
+                const powershellPath = yield io.which('powershell', true);
+                yield exec(`"${powershellPath}"`, args, options);
+            }
+            finally {
+                process.chdir(originalCwd);
+            }
+        }
+        return dest;
+    });
+}
+/**
+ * Extract a compressed tar archive
+ *
+ * @param file     path to the tar
+ * @param dest     destination directory. Optional.
+ * @param flags    flags for the tar command to use for extraction. Defaults to 'xz' (extracting gzipped tars). Optional.
+ * @returns        path to the destination directory
+ */
+function extractTar(file_1, dest_1) {
+    return tool_cache_awaiter(this, arguments, void 0, function* (file, dest, flags = 'xz') {
+        if (!file) {
+            throw new Error("parameter 'file' is required");
+        }
+        // Create dest
+        dest = yield _createExtractFolder(dest);
+        // Determine whether GNU tar
+        core.debug('Checking tar --version');
+        let versionOutput = '';
+        yield exec('tar --version', [], {
+            ignoreReturnCode: true,
+            silent: true,
+            listeners: {
+                stdout: (data) => (versionOutput += data.toString()),
+                stderr: (data) => (versionOutput += data.toString())
+            }
+        });
+        core.debug(versionOutput.trim());
+        const isGnuTar = versionOutput.toUpperCase().includes('GNU TAR');
+        // Initialize args
+        let args;
+        if (flags instanceof Array) {
+            args = flags;
+        }
+        else {
+            args = [flags];
+        }
+        if (core.isDebug() && !flags.includes('v')) {
+            args.push('-v');
+        }
+        let destArg = dest;
+        let fileArg = file;
+        if (tool_cache_IS_WINDOWS && isGnuTar) {
+            args.push('--force-local');
+            destArg = dest.replace(/\\/g, '/');
+            // Technically only the dest needs to have `/` but for aesthetic consistency
+            // convert slashes in the file arg too.
+            fileArg = file.replace(/\\/g, '/');
+        }
+        if (isGnuTar) {
+            // Suppress warnings when using GNU tar to extract archives created by BSD tar
+            args.push('--warning=no-unknown-keyword');
+            args.push('--overwrite');
+        }
+        args.push('-C', destArg, '-f', fileArg);
+        yield exec(`tar`, args);
+        return dest;
+    });
+}
+/**
+ * Extract a xar compatible archive
+ *
+ * @param file     path to the archive
+ * @param dest     destination directory. Optional.
+ * @param flags    flags for the xar. Optional.
+ * @returns        path to the destination directory
+ */
+function extractXar(file_1, dest_1) {
+    return tool_cache_awaiter(this, arguments, void 0, function* (file, dest, flags = []) {
+        ok(IS_MAC, 'extractXar() not supported on current OS');
+        ok(file, 'parameter "file" is required');
+        dest = yield _createExtractFolder(dest);
+        let args;
+        if (flags instanceof Array) {
+            args = flags;
+        }
+        else {
+            args = [flags];
+        }
+        args.push('-x', '-C', dest, '-f', file);
+        if (core.isDebug()) {
+            args.push('-v');
+        }
+        const xarPath = yield io.which('xar', true);
+        yield exec(`"${xarPath}"`, _unique(args));
+        return dest;
+    });
+}
+/**
+ * Extract a zip
+ *
+ * @param file     path to the zip
+ * @param dest     destination directory. Optional.
+ * @returns        path to the destination directory
+ */
+function extractZip(file, dest) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        if (!file) {
+            throw new Error("parameter 'file' is required");
+        }
+        dest = yield _createExtractFolder(dest);
+        if (tool_cache_IS_WINDOWS) {
+            yield extractZipWin(file, dest);
+        }
+        else {
+            yield extractZipNix(file, dest);
+        }
+        return dest;
+    });
+}
+function extractZipWin(file, dest) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        // build the powershell command
+        const escapedFile = file.replace(/'/g, "''").replace(/"|\n|\r/g, ''); // double-up single quotes, remove double quotes and newlines
+        const escapedDest = dest.replace(/'/g, "''").replace(/"|\n|\r/g, '');
+        const pwshPath = yield which('pwsh', false);
+        //To match the file overwrite behavior on nix systems, we use the overwrite = true flag for ExtractToDirectory
+        //and the -Force flag for Expand-Archive as a fallback
+        if (pwshPath) {
+            //attempt to use pwsh with ExtractToDirectory, if this fails attempt Expand-Archive
+            const pwshCommand = [
+                `$ErrorActionPreference = 'Stop' ;`,
+                `try { Add-Type -AssemblyName System.IO.Compression.ZipFile } catch { } ;`,
+                `try { [System.IO.Compression.ZipFile]::ExtractToDirectory('${escapedFile}', '${escapedDest}', $true) }`,
+                `catch { if (($_.Exception.GetType().FullName -eq 'System.Management.Automation.MethodException') -or ($_.Exception.GetType().FullName -eq 'System.Management.Automation.RuntimeException') ){ Expand-Archive -LiteralPath '${escapedFile}' -DestinationPath '${escapedDest}' -Force } else { throw $_ } } ;`
+            ].join(' ');
+            const args = [
+                '-NoLogo',
+                '-NoProfile',
+                '-NonInteractive',
+                '-ExecutionPolicy',
+                'Unrestricted',
+                '-Command',
+                pwshCommand
+            ];
+            core_debug(`Using pwsh at path: ${pwshPath}`);
+            yield exec_exec(`"${pwshPath}"`, args);
+        }
+        else {
+            const powershellCommand = [
+                `$ErrorActionPreference = 'Stop' ;`,
+                `try { Add-Type -AssemblyName System.IO.Compression.FileSystem } catch { } ;`,
+                `if ((Get-Command -Name Expand-Archive -Module Microsoft.PowerShell.Archive -ErrorAction Ignore)) { Expand-Archive -LiteralPath '${escapedFile}' -DestinationPath '${escapedDest}' -Force }`,
+                `else {[System.IO.Compression.ZipFile]::ExtractToDirectory('${escapedFile}', '${escapedDest}', $true) }`
+            ].join(' ');
+            const args = [
+                '-NoLogo',
+                '-Sta',
+                '-NoProfile',
+                '-NonInteractive',
+                '-ExecutionPolicy',
+                'Unrestricted',
+                '-Command',
+                powershellCommand
+            ];
+            const powershellPath = yield which('powershell', true);
+            core_debug(`Using powershell at path: ${powershellPath}`);
+            yield exec_exec(`"${powershellPath}"`, args);
+        }
+    });
+}
+function extractZipNix(file, dest) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        const unzipPath = yield which('unzip', true);
+        const args = [file];
+        if (!isDebug()) {
+            args.unshift('-q');
+        }
+        args.unshift('-o'); //overwrite with -o, otherwise a prompt is shown which freezes the run
+        yield exec_exec(`"${unzipPath}"`, args, { cwd: dest });
+    });
+}
+/**
+ * Caches a directory and installs it into the tool cacheDir
+ *
+ * @param sourceDir    the directory to cache into tools
+ * @param tool          tool name
+ * @param version       version of the tool.  semver format
+ * @param arch          architecture of the tool.  Optional.  Defaults to machine architecture
+ */
+function cacheDir(sourceDir, tool, version, arch) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        version = semver.clean(version) || version;
+        arch = arch || os.arch();
+        core.debug(`Caching tool ${tool} ${version} ${arch}`);
+        core.debug(`source dir: ${sourceDir}`);
+        if (!fs.statSync(sourceDir).isDirectory()) {
+            throw new Error('sourceDir is not a directory');
+        }
+        // Create the tool dir
+        const destPath = yield _createToolPath(tool, version, arch);
+        // copy each child item. do not move. move can fail on Windows
+        // due to anti-virus software having an open handle on a file.
+        for (const itemName of fs.readdirSync(sourceDir)) {
+            const s = path.join(sourceDir, itemName);
+            yield io.cp(s, destPath, { recursive: true });
+        }
+        // write .complete
+        _completeToolPath(tool, version, arch);
+        return destPath;
+    });
+}
+/**
+ * Caches a downloaded file (GUID) and installs it
+ * into the tool cache with a given targetName
+ *
+ * @param sourceFile    the file to cache into tools.  Typically a result of downloadTool which is a guid.
+ * @param targetFile    the name of the file name in the tools directory
+ * @param tool          tool name
+ * @param version       version of the tool.  semver format
+ * @param arch          architecture of the tool.  Optional.  Defaults to machine architecture
+ */
+function cacheFile(sourceFile, targetFile, tool, version, arch) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        version = semver.clean(version) || version;
+        arch = arch || os.arch();
+        core.debug(`Caching tool ${tool} ${version} ${arch}`);
+        core.debug(`source file: ${sourceFile}`);
+        if (!fs.statSync(sourceFile).isFile()) {
+            throw new Error('sourceFile is not a file');
+        }
+        // create the tool dir
+        const destFolder = yield _createToolPath(tool, version, arch);
+        // copy instead of move. move can fail on Windows due to
+        // anti-virus software having an open handle on a file.
+        const destPath = path.join(destFolder, targetFile);
+        core.debug(`destination file ${destPath}`);
+        yield io.cp(sourceFile, destPath);
+        // write .complete
+        _completeToolPath(tool, version, arch);
+        return destFolder;
+    });
+}
+/**
+ * Finds the path to a tool version in the local installed tool cache
+ *
+ * @param toolName      name of the tool
+ * @param versionSpec   version of the tool
+ * @param arch          optional arch.  defaults to arch of computer
+ */
+function find(toolName, versionSpec, arch) {
+    if (!toolName) {
+        throw new Error('toolName parameter is required');
+    }
+    if (!versionSpec) {
+        throw new Error('versionSpec parameter is required');
+    }
+    arch = arch || os.arch();
+    // attempt to resolve an explicit version
+    if (!isExplicitVersion(versionSpec)) {
+        const localVersions = findAllVersions(toolName, arch);
+        const match = evaluateVersions(localVersions, versionSpec);
+        versionSpec = match;
+    }
+    // check for the explicit version in the cache
+    let toolPath = '';
+    if (versionSpec) {
+        versionSpec = semver.clean(versionSpec) || '';
+        const cachePath = path.join(_getCacheDirectory(), toolName, versionSpec, arch);
+        core.debug(`checking cache: ${cachePath}`);
+        if (fs.existsSync(cachePath) && fs.existsSync(`${cachePath}.complete`)) {
+            core.debug(`Found tool in cache ${toolName} ${versionSpec} ${arch}`);
+            toolPath = cachePath;
+        }
+        else {
+            core.debug('not found');
+        }
+    }
+    return toolPath;
+}
+/**
+ * Finds the paths to all versions of a tool that are installed in the local tool cache
+ *
+ * @param toolName  name of the tool
+ * @param arch      optional arch.  defaults to arch of computer
+ */
+function findAllVersions(toolName, arch) {
+    const versions = [];
+    arch = arch || os.arch();
+    const toolPath = path.join(_getCacheDirectory(), toolName);
+    if (fs.existsSync(toolPath)) {
+        const children = fs.readdirSync(toolPath);
+        for (const child of children) {
+            if (isExplicitVersion(child)) {
+                const fullPath = path.join(toolPath, child, arch || '');
+                if (fs.existsSync(fullPath) && fs.existsSync(`${fullPath}.complete`)) {
+                    versions.push(child);
+                }
+            }
+        }
+    }
+    return versions;
+}
+function getManifestFromRepo(owner_1, repo_1, auth_1) {
+    return tool_cache_awaiter(this, arguments, void 0, function* (owner, repo, auth, branch = 'master') {
+        let releases = [];
+        const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}`;
+        const http = new httpm.HttpClient('tool-cache');
+        const headers = {};
+        if (auth) {
+            core.debug('set auth');
+            headers.authorization = auth;
+        }
+        const response = yield http.getJson(treeUrl, headers);
+        if (!response.result) {
+            return releases;
+        }
+        let manifestUrl = '';
+        for (const item of response.result.tree) {
+            if (item.path === 'versions-manifest.json') {
+                manifestUrl = item.url;
+                break;
+            }
+        }
+        headers['accept'] = 'application/vnd.github.VERSION.raw';
+        let versionsRaw = yield (yield http.get(manifestUrl, headers)).readBody();
+        if (versionsRaw) {
+            // shouldn't be needed but protects against invalid json saved with BOM
+            versionsRaw = versionsRaw.replace(/^\uFEFF/, '');
+            try {
+                releases = JSON.parse(versionsRaw);
+            }
+            catch (_a) {
+                core.debug('Invalid json');
+            }
+        }
+        return releases;
+    });
+}
+function findFromManifest(versionSpec_1, stable_1, manifest_1) {
+    return tool_cache_awaiter(this, arguments, void 0, function* (versionSpec, stable, manifest, archFilter = os.arch()) {
+        // wrap the internal impl
+        const match = yield mm._findMatch(versionSpec, stable, manifest, archFilter);
+        return match;
+    });
+}
+function _createExtractFolder(dest) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        if (!dest) {
+            // create a temp dir
+            dest = external_path_.join(_getTempDirectory(), external_crypto_namespaceObject.randomUUID());
+        }
+        yield mkdirP(dest);
+        return dest;
+    });
+}
+function _createToolPath(tool, version, arch) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        const folderPath = path.join(_getCacheDirectory(), tool, semver.clean(version) || version, arch || '');
+        core.debug(`destination ${folderPath}`);
+        const markerPath = `${folderPath}.complete`;
+        yield io.rmRF(folderPath);
+        yield io.rmRF(markerPath);
+        yield io.mkdirP(folderPath);
+        return folderPath;
+    });
+}
+function _completeToolPath(tool, version, arch) {
+    const folderPath = path.join(_getCacheDirectory(), tool, semver.clean(version) || version, arch || '');
+    const markerPath = `${folderPath}.complete`;
+    fs.writeFileSync(markerPath, '');
+    core.debug('finished caching tool');
+}
+/**
+ * Check if version string is explicit
+ *
+ * @param versionSpec      version string to check
+ */
+function isExplicitVersion(versionSpec) {
+    const c = semver.clean(versionSpec) || '';
+    core.debug(`isExplicit: ${c}`);
+    const valid = semver.valid(c) != null;
+    core.debug(`explicit? ${valid}`);
+    return valid;
+}
+/**
+ * Get the highest satisfiying semantic version in `versions` which satisfies `versionSpec`
+ *
+ * @param versions        array of versions to evaluate
+ * @param versionSpec     semantic version spec to satisfy
+ */
+function evaluateVersions(versions, versionSpec) {
+    let version = '';
+    core.debug(`evaluating ${versions.length} versions`);
+    versions = versions.sort((a, b) => {
+        if (semver.gt(a, b)) {
+            return 1;
+        }
+        return -1;
+    });
+    for (let i = versions.length - 1; i >= 0; i--) {
+        const potential = versions[i];
+        const satisfied = semver.satisfies(potential, versionSpec);
+        if (satisfied) {
+            version = potential;
+            break;
+        }
+    }
+    if (version) {
+        core.debug(`matched: ${version}`);
+    }
+    else {
+        core.debug('match not found');
+    }
+    return version;
+}
+/**
+ * Gets RUNNER_TOOL_CACHE
+ */
+function _getCacheDirectory() {
+    const cacheDirectory = process.env['RUNNER_TOOL_CACHE'] || '';
+    ok(cacheDirectory, 'Expected RUNNER_TOOL_CACHE to be defined');
+    return cacheDirectory;
+}
+/**
+ * Gets RUNNER_TEMP
+ */
+function _getTempDirectory() {
+    const tempDirectory = process.env['RUNNER_TEMP'] || '';
+    (0,external_assert_.ok)(tempDirectory, 'Expected RUNNER_TEMP to be defined');
+    return tempDirectory;
+}
+/**
+ * Gets a global variable
+ */
+function _getGlobal(key, defaultValue) {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    const value = global[key];
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+    return value !== undefined ? value : defaultValue;
+}
+/**
+ * Returns an array of unique values.
+ * @param values Values to make unique.
+ */
+function _unique(values) {
+    return Array.from(new Set(values));
+}
+//# sourceMappingURL=tool-cache.js.map
+;// CONCATENATED MODULE: ./src/windows-installer-experimental.ts
+
+
+
+
+const DOTNET_BUILD_FEED = 'https://builds.dotnet.microsoft.com/dotnet';
+class ExperimentalWindowsDotnetInstaller {
+    version;
+    architecture;
+    installDirectory;
+    constructor(version, architecture, installDirectory) {
+        this.version = version;
+        this.architecture = architecture;
+        this.installDirectory = installDirectory;
+    }
+    async installSdk() {
+        if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(this.version)) {
+            throw new Error(`Experimental Node Windows installer supports exact SDK versions only. Received '${this.version}'.`);
+        }
+        const normalizedArchitecture = this.architecture.toLowerCase() === 'amd64'
+            ? 'x64'
+            : this.architecture.toLowerCase();
+        const archiveUrl = `${DOTNET_BUILD_FEED}/Sdk/${this.version}/` +
+            `dotnet-sdk-${this.version}-win-${normalizedArchitecture}.zip`;
+        const archivePath = external_path_default().join(process.env['RUNNER_TEMP'] || external_os_default().tmpdir(), `dotnet-sdk-${this.version}-win-${normalizedArchitecture}.zip`);
+        info(`Experimental Node installer downloading: ${archiveUrl}`);
+        const downloadStart = performance.now();
+        const downloadedArchivePath = await downloadTool(archiveUrl, archivePath);
+        const downloadSeconds = (performance.now() - downloadStart) / 1000;
+        info(`Experimental Node installer download completed in ${downloadSeconds.toFixed(3)} seconds.`);
+        info(`Experimental Node installer extracting ZIP directly to: ${this.installDirectory}`);
+        const extractionStart = performance.now();
+        // Intentional experiment behavior:
+        // extractZip performs a bulk extraction into the actual installation root.
+        // It does not reproduce SkipNonVersionedFiles or side-by-side merge rules.
+        await extractZip(downloadedArchivePath, this.installDirectory);
+        const extractionSeconds = (performance.now() - extractionStart) / 1000;
+        info(`Experimental Node installer extraction completed in ${extractionSeconds.toFixed(3)} seconds.`);
+        return this.version;
+    }
+}
+
 ;// CONCATENATED MODULE: ./src/installer.ts
 // Load tempDirectory before it gets wiped by tool-cache
+
 
 
 
@@ -45111,11 +45952,11 @@ class DotnetVersionResolver {
         if (this.inputVersion.toLowerCase() === 'latest') {
             const channel = this.dotnetChannel || '';
             if (this.isVersionChannel(channel)) {
-                // A.B or A.B.Cxx channels are passed directly to the install script
+                // A.B or A.B.Cxx channels are passed directly to the install script.
                 this.resolvedArgument.value = channel;
             }
             else {
-                // LTS, STS, or empty — resolve via releases index API
+                // LTS, STS, or empty — resolve via releases index API.
                 this.resolvedArgument.value = await this.getLatestVersion(channel);
             }
             this.resolvedArgument.type = 'channel';
@@ -45181,11 +46022,12 @@ class DotnetVersionResolver {
             }
         }
         else {
-            // If "dotnet-version" is specified as *, x or X resolve latest version of .NET explicitly from LTS channel. The version argument will default to "latest" by install-dotnet script.
+            // If "dotnet-version" is specified as *, x or X, resolve latest version
+            // of .NET explicitly from the LTS channel.
             this.resolvedArgument.value = 'LTS';
         }
         this.resolvedArgument.qualityFlag =
-            parseInt(major) >= QUALITY_INPUT_MINIMAL_MAJOR_TAG ? true : false;
+            parseInt(major) >= QUALITY_INPUT_MINIMAL_MAJOR_TAG;
     }
     async createDotnetVersion() {
         await this.resolveVersionInput();
@@ -45214,15 +46056,15 @@ class DotnetVersionResolver {
             throw new Error('Unexpected response format from .NET releases index.');
         }
         let releasesInfo = rawReleasesInfo;
-        // Filter out EOL versions
+        // Filter out EOL versions.
         releasesInfo = releasesInfo.filter(info => info['support-phase'] !== 'eol');
-        // Filter out preview versions if quality is not 'preview' or 'daily'
-        // If quality is not specified, we assume strict stability (GA only)
+        // Filter out preview versions if quality is not preview or daily.
+        // If quality is not specified, assume stable GA releases only.
         const normalizedQuality = (this.quality || '').toLowerCase();
         if (!['preview', 'daily'].includes(normalizedQuality)) {
             releasesInfo = releasesInfo.filter(info => info['support-phase'] !== 'preview');
         }
-        // Apply channel filter (LTS/STS)
+        // Apply the LTS or STS filter.
         if (channelFilter) {
             const type = channelFilter.toLowerCase();
             releasesInfo = releasesInfo.filter(info => info['release-type'] === type);
@@ -45271,7 +46113,7 @@ class DotnetInstallScript {
         if (process.env['https_proxy'] != null) {
             this.scriptArguments.push(`-ProxyAddress ${process.env['https_proxy']}`);
         }
-        // This is not currently an option
+        // This is not currently an action input.
         if (process.env['no_proxy'] != null) {
             this.scriptArguments.push(`-ProxyBypassList ${process.env['no_proxy']}`);
         }
@@ -45289,7 +46131,8 @@ class DotnetInstallScript {
         this.scriptArguments.push(...args);
         return this;
     }
-    // When architecture is empty/undefined, the installer auto-detects the current runner architecture.
+    // When architecture is empty/undefined, the installer auto-detects the
+    // current runner architecture.
     useArchitecture(architecture) {
         if (!architecture)
             return this;
@@ -45327,8 +46170,9 @@ class DotnetInstallDir {
         ? DotnetInstallDir.convertInstallPathToAbsolute(process.env['DOTNET_INSTALL_DIR'])
         : DotnetInstallDir.default[PLATFORM];
     static convertInstallPathToAbsolute(installDir) {
-        if (external_path_default().isAbsolute(installDir))
+        if (external_path_default().isAbsolute(installDir)) {
             return external_path_default().normalize(installDir);
+        }
         const transformedPath = installDir.startsWith('~')
             ? external_path_default().join(external_os_default().homedir(), installDir.slice(1))
             : external_path_default().join(process.cwd(), installDir);
@@ -45367,6 +46211,42 @@ class DotnetCoreInstaller {
         this.dotnetChannel = dotnetChannel;
     }
     async installDotnet() {
+        const useExperimentalNodeWindowsInstaller = utils_IS_WINDOWS &&
+            process.env['SETUP_DOTNET_EXPERIMENTAL_NODE_WINDOWS_INSTALLER'] === '1';
+        if (useExperimentalNodeWindowsInstaller) {
+            return this.installDotnetWithExperimentalNodeInstaller();
+        }
+        return this.installDotnetWithScript();
+    }
+    /**
+     * UNSAFE EXPERIMENTAL PATH:
+     *
+     * This uses tool-cache to download an exact SDK archive and extracts it
+     * directly into the final installation directory. It does not run the
+     * runtime-first installation, does not support channels/quality, and does
+     * not preserve the install-dotnet.ps1 selective merge behavior.
+     */
+    async installDotnetWithExperimentalNodeInstaller() {
+        if (this.quality) {
+            throw new Error(`The experimental Node Windows installer does not support 'dotnet-quality'. Received '${this.quality}'.`);
+        }
+        if (this.dotnetChannel) {
+            throw new Error(`The experimental Node Windows installer does not support 'dotnet-channel'. Received '${this.dotnetChannel}'.`);
+        }
+        if (!semver_default().valid(this.version)) {
+            throw new Error(`The experimental Node Windows installer supports exact dotnet-version values only. Received '${this.version}'.`);
+        }
+        const normalizedArchitecture = normalizeArch(this.architecture || external_os_default().arch());
+        const isCrossArchitectureInstall = this.architecture &&
+            normalizeArch(this.architecture) !== normalizeArch(external_os_default().arch());
+        const installDirectory = isCrossArchitectureInstall
+            ? external_path_default().join(DotnetInstallDir.dirPath, this.architecture)
+            : DotnetInstallDir.dirPath;
+        info(`Using experimental Node Windows installer for .NET SDK ${this.version}.`);
+        const experimentalInstaller = new ExperimentalWindowsDotnetInstaller(this.version, normalizedArchitecture, installDirectory);
+        return experimentalInstaller.installSdk();
+    }
+    async installDotnetWithScript() {
         const versionResolver = new DotnetVersionResolver(this.version, this.quality, this.dotnetChannel);
         const dotnetVersion = await versionResolver.createDotnetVersion();
         const architectureArguments = this.architecture &&
@@ -45379,35 +46259,34 @@ class DotnetCoreInstaller {
             ]
             : [];
         /**
-         * Install dotnet runtime first in order to get
-         * the latest stable version of dotnet CLI
+         * Install runtime first in order to get the latest stable version
+         * of the dotnet CLI.
          */
         const runtimeInstallOutput = await new DotnetInstallScript()
             .useArchitecture(this.architecture)
-            // If dotnet CLI is already installed - avoid overwriting it
+            // If dotnet CLI is already installed, avoid overwriting it.
             .useArguments(utils_IS_WINDOWS ? '-SkipNonVersionedFiles' : '--skip-non-versioned-files')
-            // Install only runtime + CLI
+            // Install only runtime + CLI.
             .useArguments(utils_IS_WINDOWS ? '-Runtime' : '--runtime', 'dotnet')
-            // Use latest stable version
+            // Use latest stable version.
             .useArguments(utils_IS_WINDOWS ? '-Channel' : '--channel', 'LTS')
             .useArguments(...architectureArguments)
             .execute();
         if (runtimeInstallOutput.exitCode) {
             /**
-             * dotnetInstallScript will install CLI and runtime even if previous script haven't succeded,
-             * so at this point it's too early to throw an error
+             * dotnetInstallScript will install CLI and runtime even if the previous
+             * script has not succeeded, so at this point it is too early to throw.
              */
             warning(`Failed to install dotnet runtime + cli, exit code: ${runtimeInstallOutput.exitCode}. ${runtimeInstallOutput.stderr}`);
         }
         /**
-         * Install dotnet over the latest version of
-         * dotnet CLI
+         * Install the requested SDK over the latest version of the dotnet CLI.
          */
         const dotnetInstallOutput = await new DotnetInstallScript()
             .useArchitecture(this.architecture)
-            // Don't overwrite CLI because it should be already installed
+            // Do not overwrite the CLI because it should already be installed.
             .useArguments(utils_IS_WINDOWS ? '-SkipNonVersionedFiles' : '--skip-non-versioned-files')
-            // Use version provided by user
+            // Use the version provided by the user.
             .useVersion(dotnetVersion, this.quality)
             .useArguments(...architectureArguments)
             .execute();
@@ -45703,13 +46582,13 @@ function Collection() {
 var VERSION = "0.0.0-development";
 
 // pkg/dist-src/defaults.js
-var userAgent = `octokit-endpoint.js/${VERSION} ${getUserAgent()}`;
+var dist_bundle_userAgent = `octokit-endpoint.js/${VERSION} ${getUserAgent()}`;
 var DEFAULTS = {
   method: "GET",
   baseUrl: "https://api.github.com",
   headers: {
     accept: "application/vnd.github.v3+json",
-    "user-agent": userAgent
+    "user-agent": dist_bundle_userAgent
   },
   mediaType: {
     format: ""
@@ -59014,10 +59893,6 @@ class internal_globber_DefaultGlobber {
     }
 }
 //# sourceMappingURL=internal-globber.js.map
-;// CONCATENATED MODULE: external "stream"
-const external_stream_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("stream");
-// EXTERNAL MODULE: external "util"
-var external_util_ = __nccwpck_require__(9023);
 ;// CONCATENATED MODULE: ./node_modules/@actions/cache/node_modules/@actions/glob/lib/internal-hash-files.js
 var internal_hash_files_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -59303,7 +60178,7 @@ function getVersion(app_1) {
 function getCompressionMethod() {
     return cacheUtils_awaiter(this, void 0, void 0, function* () {
         const versionOutput = yield getVersion('zstd', ['--quiet']);
-        const version = semver.clean(versionOutput);
+        const version = node_modules_semver.clean(versionOutput);
         core_debug(`zstd version: ${version}`);
         if (versionOutput === '') {
             return CompressionMethod.Gzip;
@@ -102320,7 +103195,7 @@ function tar_listTar(archivePath, compressionMethod) {
     });
 }
 // Extract a tar
-function extractTar(archivePath, compressionMethod) {
+function tar_extractTar(archivePath, compressionMethod) {
     return tar_awaiter(this, void 0, void 0, function* () {
         // Create directory to extract tar into
         const workingDirectory = getWorkingDirectory();
@@ -102548,7 +103423,7 @@ function restoreCacheV1(paths_1, primaryKey_1, restoreKeys_1, options_1) {
             }
             const archiveFileSize = getArchiveFileSizeInBytes(archivePath);
             info(`Cache Size: ~${Math.round(archiveFileSize / (1024 * 1024))} MB (${archiveFileSize} B)`);
-            yield extractTar(archivePath, compressionMethod);
+            yield tar_extractTar(archivePath, compressionMethod);
             info('Cache restored successfully');
             return cacheEntry.cacheKey;
         }
@@ -102656,7 +103531,7 @@ function restoreCacheV2(paths_1, primaryKey_1, restoreKeys_1, options_1) {
             if (isDebug()) {
                 yield tar_listTar(archivePath, compressionMethod);
             }
-            yield extractTar(archivePath, compressionMethod);
+            yield tar_extractTar(archivePath, compressionMethod);
             info('Cache restored successfully');
             return response.matchedKey;
         }
