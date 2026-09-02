@@ -129,6 +129,42 @@ describe('installer tests', () => {
         expect(installedVersion).toBe(inputVersion);
       });
 
+      it('should preserve existing non-versioned files for both runtime and SDK installations', async () => {
+        const inputVersion = '10.0.101';
+        const inputQuality = '';
+        const stdout = `Fictitious dotnet version ${inputVersion} is installed`;
+
+        getExecOutputSpy.mockImplementation(() => {
+          return Promise.resolve({
+            exitCode: 0,
+            stdout,
+            stderr: ''
+          });
+        });
+        maxSatisfyingSpy.mockImplementation(() => inputVersion);
+
+        const initialCallCount = getExecOutputSpy.mock.calls.length;
+        const dotnetInstaller = new installer.DotnetCoreInstaller(
+          inputVersion,
+          inputQuality
+        );
+
+        await dotnetInstaller.installDotnet();
+
+        const expectedArgument = IS_WINDOWS
+          ? '-SkipNonVersionedFiles'
+          : '--skip-non-versioned-files';
+        const installCalls =
+          getExecOutputSpy.mock.calls.slice(initialCallCount);
+
+        expect(installCalls).toHaveLength(2);
+
+        for (const call of installCalls) {
+          const scriptArguments = (call[1] as string[]).join(' ');
+          expect(scriptArguments).toContain(expectedArgument);
+        }
+      });
+
       it(`should supply 'version' argument to the installation script if supplied version is in A.B.C syntax`, async () => {
         const inputVersion = '10.0.101';
         const inputQuality = '';
